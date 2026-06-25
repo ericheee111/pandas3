@@ -34,7 +34,7 @@ dtypes = [
     ('float32_t', 'float32_t'),
     ('float32_t', 'float64_t'),
     ('float64_t', 'float64_t'),
-    ('object', 'object'),
+    # ('object', 'object'),  # hand-rolled below for manual refcount control
 ]
 
 
@@ -329,6 +329,10 @@ def take_2d_axis1_{{name}}_{{dest}}(ndarray[{{c_type_in}}, ndim=2] values,
         {{if c_type_in != "object" and c_type_out != "object"}}
         Py_ssize_t k4
         bint contig
+        {{if c_type_in == c_type_out}}
+        bint contiguous_indexer
+        intp_t start
+        {{endif}}
         const {{c_type_in}} *vrow
         const intp_t *ip
         {{c_type_out}} *orow
@@ -353,7 +357,36 @@ def take_2d_axis1_{{name}}_{{dest}}(ndarray[{{c_type_in}}, ndim=2] values,
     with nogil:
         if contig:
             ip = &indexer[0]
+            {{if c_type_in == c_type_out}}
+            # Check whether the indexer represents a contiguous slice
+            # (e.g. [5,6,7,…,5+k-1]); if so, a single memcpy per row
+            # is far cheaper than element-by-element indexing.
+            contiguous_indexer = False
+            start = ip[0]
+            if start != -1:
+                contiguous_indexer = True
+                for j in range(1, k):
+                    if ip[j] != start + j:
+                        contiguous_indexer = False
+                        break
+
+            if contiguous_indexer:
+                if allow_fill:
+                    for i in range(n):
+                        orow = &out[i, 0]
+                        vrow = &values[i, 0]
+                        memcpy(orow, vrow + start,
+                               <size_t>(sizeof({{c_type_out}}) * k))
+                else:
+                    for i in range(n):
+                        orow = &out[i, 0]
+                        vrow = &values[i, 0]
+                        memcpy(orow, vrow + start,
+                               <size_t>(sizeof({{c_type_out}}) * k))
+            elif allow_fill:
+            {{else}}
             if allow_fill:
+            {{endif}}
                 for i in range(n):
                     vrow = &values[i, 0]
                     orow = &out[i, 0]
@@ -386,16 +419,43 @@ def take_2d_axis1_{{name}}_{{dest}}(ndarray[{{c_type_in}}, ndim=2] values,
                         orow[j] = vrow[ip[j]]
         elif allow_fill:
             for i in range(n):
-                for j in range(k):
+                j = 0
+                while j <= k - 4:
+                    i0 = indexer[j]
+                    i1 = indexer[j + 1]
+                    i2 = indexer[j + 2]
+                    i3 = indexer[j + 3]
+
+                    out[i, j]     = fv if i0 == -1 else values[i, i0]
+                    out[i, j + 1] = fv if i1 == -1 else values[i, i1]
+                    out[i, j + 2] = fv if i2 == -1 else values[i, i2]
+                    out[i, j + 3] = fv if i3 == -1 else values[i, i3]
+
+                    j += 4
+
+                while j < k:
                     idx = indexer[j]
-                    if idx == -1:
-                        out[i, j] = fv
-                    else:
-                        out[i, j] = values[i, idx]
+                    out[i, j] = fv if idx == -1 else values[i, idx]
+                    j += 1
         else:
             for i in range(n):
-                for j in range(k):
+                j = 0
+                while j <= k - 4:
+                    i0 = indexer[j]
+                    i1 = indexer[j + 1]
+                    i2 = indexer[j + 2]
+                    i3 = indexer[j + 3]
+
+                    out[i, j]     = values[i, i0]
+                    out[i, j + 1] = values[i, i1]
+                    out[i, j + 2] = values[i, i2]
+                    out[i, j + 3] = values[i, i3]
+
+                    j += 4
+
+                while j < k:
                     out[i, j] = values[i, indexer[j]]
+                    j += 1
 
     {{else}}
     if allow_fill:
@@ -543,3 +603,332 @@ def take_2d_multi_{{name}}_{{dest}}(ndarray[{{c_type_in}}, ndim=2] values,
     {{endif}}
 
 {{endfor}}
+
+
+# ----------------------------------------------------------------------
+# Hand-rolled object take functions with manual refcount control.
+# Using raw PyObject** pointers and explicit Py_INCREF / Py_XDECREF
+# avoids the overhead of Python-level assignment (which does an implicit
+# INCREF on the new value + XDECREF on the old, plus memoryview stride
+# arithmetic on every iteration).
+# ----------------------------------------------------------------------
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def take_1d_object_object(
+        ndarray[object, ndim=1] values,
+        const intp_t[:] indexer,
+        ndarray[object, ndim=1] out,
+        fill_value=np.nan,
+        bint allow_fill=True):
+
+    cdef:
+        Py_ssize_t i, n, n4
+        Py_ssize_t idx0, idx1, idx2, idx3, idx
+        object fv
+        PyObject **values_ptr
+        PyObject **out_ptr
+        Py_ssize_t vs0 = values.strides[0] // sizeof(PyObject*)
+        Py_ssize_t os0 = out.strides[0] // sizeof(PyObject*)
+        PyObject *src
+        PyObject *dst
+
+    n = indexer.shape[0]
+    n4 = n - (n % 4)
+
+    values_ptr = <PyObject**> values.data
+    out_ptr = <PyObject**> out.data
+    fv = fill_value
+
+    if allow_fill:
+        # 4-way unrolled loop
+        for i in range(0, n4, 4):
+
+            # ---- 0 ----
+            idx0 = indexer[i]
+            if idx0 == -1:
+                src = <PyObject*>fv
+            else:
+                src = values_ptr[idx0 * vs0]
+
+            Py_INCREF(<object>src)
+            dst = out_ptr[i * os0]
+            Py_XDECREF(dst)
+            out_ptr[i * os0] = src
+
+            # ---- 1 ----
+            idx1 = indexer[i + 1]
+            if idx1 == -1:
+                src = <PyObject*>fv
+            else:
+                src = values_ptr[idx1 * vs0]
+
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 1) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 1) * os0] = src
+
+            # ---- 2 ----
+            idx2 = indexer[i + 2]
+            if idx2 == -1:
+                src = <PyObject*>fv
+            else:
+                src = values_ptr[idx2 * vs0]
+
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 2) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 2) * os0] = src
+
+            # ---- 3 ----
+            idx3 = indexer[i + 3]
+            if idx3 == -1:
+                src = <PyObject*>fv
+            else:
+                src = values_ptr[idx3 * vs0]
+
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 3) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 3) * os0] = src
+
+        # tail
+        for i in range(n4, n):
+            idx = indexer[i]
+
+            if idx == -1:
+                src = <PyObject*>fv
+            else:
+                src = values_ptr[idx * vs0]
+
+            Py_INCREF(<object>src)
+            dst = out_ptr[i * os0]
+            Py_XDECREF(dst)
+            out_ptr[i * os0] = src
+    else:
+        # No -1 entries possible, skip fill_value checks
+        for i in range(0, n4, 4):
+
+            src = values_ptr[indexer[i] * vs0]
+            Py_INCREF(<object>src)
+            dst = out_ptr[i * os0]
+            Py_XDECREF(dst)
+            out_ptr[i * os0] = src
+
+            src = values_ptr[indexer[i + 1] * vs0]
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 1) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 1) * os0] = src
+
+            src = values_ptr[indexer[i + 2] * vs0]
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 2) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 2) * os0] = src
+
+            src = values_ptr[indexer[i + 3] * vs0]
+            Py_INCREF(<object>src)
+            dst = out_ptr[(i + 3) * os0]
+            Py_XDECREF(dst)
+            out_ptr[(i + 3) * os0] = src
+
+        for i in range(n4, n):
+            src = values_ptr[indexer[i] * vs0]
+            Py_INCREF(<object>src)
+            dst = out_ptr[i * os0]
+            Py_XDECREF(dst)
+            out_ptr[i * os0] = src
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def take_2d_axis0_object_object(ndarray[object, ndim=2] values,
+                                    ndarray[intp_t, ndim=1] indexer,
+                                    ndarray[object, ndim=2] out,
+                                    fill_value=np.nan,
+                                    bint allow_fill=True):
+    cdef:
+        Py_ssize_t i, j, k, n, idx
+        object fv
+        PyObject** values_ptr
+        PyObject** out_ptr
+        Py_ssize_t values_stride0 = values.strides[0] // sizeof(PyObject*)
+        Py_ssize_t values_stride1 = values.strides[1] // sizeof(PyObject*)
+        Py_ssize_t out_stride0 = out.strides[0] // sizeof(PyObject*)
+        Py_ssize_t out_stride1 = out.strides[1] // sizeof(PyObject*)
+        PyObject *src
+        PyObject *dst
+
+    n = len(indexer)
+    k = values.shape[1]
+    values_ptr = <PyObject**>values.data
+    out_ptr = <PyObject**>out.data
+
+    fv = fill_value
+
+    if allow_fill:
+        for i in range(n):
+            idx = indexer[i]
+            if idx == -1:
+                for j in range(k):
+                    Py_INCREF(fv)
+                    dst = out_ptr[i * out_stride0 + j * out_stride1]
+                    Py_XDECREF(dst)
+                    out_ptr[i * out_stride0 + j * out_stride1] = <PyObject*>fv
+            else:
+                for j in range(k):
+                    src = values_ptr[idx * values_stride0 + j * values_stride1]
+                    Py_INCREF(<object>src)
+                    dst = out_ptr[i * out_stride0 + j * out_stride1]
+                    Py_XDECREF(dst)
+                    out_ptr[i * out_stride0 + j * out_stride1] = src
+    else:
+        for i in range(n):
+            idx = indexer[i]
+            for j in range(k):
+                src = values_ptr[idx * values_stride0 + j * values_stride1]
+                Py_INCREF(<object>src)
+                dst = out_ptr[i * out_stride0 + j * out_stride1]
+                Py_XDECREF(dst)
+                out_ptr[i * out_stride0 + j * out_stride1] = src
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def take_2d_axis1_object_object(
+        ndarray[object, ndim=2] values,
+        ndarray[intp_t, ndim=1] indexer,
+        ndarray[object, ndim=2] out,
+        fill_value=np.nan,
+        bint allow_fill=True):
+
+    cdef:
+        Py_ssize_t i, j, k, n, idx
+        object fv
+        PyObject **values_ptr
+        PyObject **out_ptr
+        Py_ssize_t vs0 = values.strides[0] // sizeof(PyObject*)
+        Py_ssize_t vs1 = values.strides[1] // sizeof(PyObject*)
+        Py_ssize_t os0 = out.strides[0] // sizeof(PyObject*)
+        Py_ssize_t os1 = out.strides[1] // sizeof(PyObject*)
+        PyObject *src
+        PyObject *dst
+        PyObject **row_src
+        PyObject **row_dst
+
+    n = values.shape[0]
+    k = indexer.shape[0]
+
+    if n == 0 or k == 0:
+        return
+
+    values_ptr = <PyObject**> values.data
+    out_ptr = <PyObject**> out.data
+    fv = fill_value
+
+    if allow_fill:
+        for i in range(n):
+            row_src = values_ptr + i * vs0
+            row_dst = out_ptr + i * os0
+
+            for j in range(k):
+                idx = indexer[j]
+
+                if idx == -1:
+                    src = <PyObject*>fv
+                else:
+                    src = row_src[idx * vs1]
+
+                Py_INCREF(<object>src)
+                dst = row_dst[j * os1]
+                Py_XDECREF(dst)
+                row_dst[j * os1] = src
+    else:
+        for i in range(n):
+            row_src = values_ptr + i * vs0
+            row_dst = out_ptr + i * os0
+
+            for j in range(k):
+                src = row_src[indexer[j] * vs1]
+
+                Py_INCREF(<object>src)
+                dst = row_dst[j * os1]
+                Py_XDECREF(dst)
+                row_dst[j * os1] = src
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def take_2d_multi_object_object(
+        ndarray[object, ndim=2] values,
+        indexer,
+        ndarray[object, ndim=2] out,
+        fill_value=np.nan,
+        bint allow_fill=True):
+
+    cdef:
+        Py_ssize_t i, j, k, n
+        ndarray[intp_t, ndim=1] idx0 = indexer[0]
+        ndarray[intp_t, ndim=1] idx1 = indexer[1]
+        object fv
+        PyObject **values_ptr
+        PyObject **out_ptr
+        Py_ssize_t vs0 = values.strides[0] // sizeof(PyObject*)
+        Py_ssize_t vs1 = values.strides[1] // sizeof(PyObject*)
+        Py_ssize_t os0 = out.strides[0] // sizeof(PyObject*)
+        Py_ssize_t os1 = out.strides[1] // sizeof(PyObject*)
+        PyObject *src
+        PyObject *dst
+        PyObject **row_src
+        PyObject **row_dst
+        Py_ssize_t id0, id1
+
+    n = idx0.shape[0]
+    k = idx1.shape[0]
+
+    values_ptr = <PyObject**> values.data
+    out_ptr = <PyObject**> out.data
+    fv = fill_value
+
+    if allow_fill:
+        for i in range(n):
+            id0 = idx0[i]
+            row_dst = out_ptr + i * os0
+
+            if id0 == -1:
+                for j in range(k):
+                    Py_INCREF(fv)
+                    dst = row_dst[j * os1]
+                    Py_XDECREF(dst)
+                    row_dst[j * os1] = <PyObject*>fv
+            else:
+                row_src = values_ptr + id0 * vs0
+
+                for j in range(k):
+                    id1 = idx1[j]
+
+                    if id1 == -1:
+                        src = <PyObject*>fv
+                    else:
+                        src = row_src[id1 * vs1]
+
+                    Py_INCREF(<object>src)
+                    dst = row_dst[j * os1]
+                    Py_XDECREF(dst)
+                    row_dst[j * os1] = src
+    else:
+        for i in range(n):
+            id0 = idx0[i]
+            row_src = values_ptr + id0 * vs0
+            row_dst = out_ptr + i * os0
+
+            for j in range(k):
+                id1 = idx1[j]
+                src = row_src[id1 * vs1]
+
+                Py_INCREF(<object>src)
+                dst = row_dst[j * os1]
+                Py_XDECREF(dst)
+                row_dst[j * os1] = src

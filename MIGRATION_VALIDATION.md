@@ -1053,3 +1053,49 @@ Status: implemented.
   - `python -m pytest pandas/tests/internals/test_internals.py -k take_nd`
 - Benchmark bool DataFrame reindex/take paths and scalar `putmask_without_repeat`
   assignment workloads.
+
+## Batch 8d: Arrow integer fillna fast path
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: partially covered for
+  single-chunk integer ArrowExtensionArray scalar `fillna`.
+
+### pandas3 adaptation notes
+
+- Added `_fill_null_with_single_chunk_integer_scalar` inside the
+  `HAS_PYARROW` block and reused pandas3's existing
+  `pyarrow_array_to_numpy_and_mask` helper.
+- Routed `ArrowExtensionArray.fillna` through this helper before the general
+  `_safe_fill_null` kernel path.
+- Kept the fast path restricted to valid scalar fills, single chunk arrays, and
+  integer pyarrow types; multi-chunk, non-integer, invalid scalar, and kernel
+  fallback cases retain the current pandas3 implementation.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `core/arrays/arrow/array.py` and Arrow utility helpers
+- `python -m py_compile pandas/core/arrays/arrow/array.py
+  pandas/tests/extension/test_arrow.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- PyArrow runtime tests: not run for the same pandas import dependency issue.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/extension/test_arrow.py -k fillna_single_chunk_integer_scalar`
+  - `python -m pytest pandas/tests/extension/test_arrow.py -k fillna`
+  - `python -m pytest pandas/tests/arrays/masked/test_arrow_compat.py`
+- Benchmark Arrow integer scalar fillna with single chunk arrays containing
+  nulls, and include multi-chunk fallback coverage.

@@ -77,10 +77,10 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 15 | `9028ac986d` | feat(swisstable): 添加 SwissUInt8Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
 | 16 | `67c9d4e13b` | feat(swisstable): 添加 SwissComplex64Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
 | 17 | `ad3b462701` | feat(swisstable): 添加 SwissComplex128Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 18 | `0744c0555f` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | pending | `_libs/index.pyx` |
+| 18 | `0744c0555f` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 19 | `1e811cf41e` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
 | 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | skipped as backward step per `28df2030b5`; recheck index part in B2 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
-| 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | pending | `_libs/index.pyx` |
+| 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
 | 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | pending | `_libs/window/aggregations.pyx` |
 | 24 | `2777612697` | kh put likely | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/vendored/klib/khash.h` |
@@ -93,7 +93,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | pending | `_libs/lib.pyx` |
 | 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | pending; must reconcile with rollback `0b958ce8fd` | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | pending | `_libs/lib.pyx`, `core/dtypes/cast.py` |
-| 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | pending | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
+| 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
 | 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/skiplist.h` |
 | 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
@@ -109,7 +109,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 47 | `a3739ab1e4` | 添加携程 benchmark | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |
 | 48 | `42b376312f` | add dataframe construction bench for xiecheng | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |
 | 49 | `baca9d6de2` | fix xiecheng StringCategorical time_to_categorical | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |
-| 50 | `403df2a143` | join: 优化 groupsort_indexer 和 take | join | B2-index-join | pending | `_libs/algos.pyx`, `_libs/join.pyx` |
+| 50 | `403df2a143` | join: 优化 groupsort_indexer 和 take | join | B2-index-join | partially migrated: `groupsort_indexer` unroll only; join take helper remains | `_libs/algos.pyx`, `_libs/join.pyx` |
 | 51 | `56996122c8` | add swisstable Factorizer implementation | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashtable/swisstable/merge files |
 | 52 | `120b7a79a1` | Fix benchmark script arguments and test script build process | script | B1-existing-audit | do not migrate; reverted by `6c0d804544` | `scripts/benchmark_swiss_prefetch.py`, `scripts/test_prefetch_server.sh` |
 | 53 | `6c0d804544` | Revert "Fix benchmark script arguments and test script build process" | script | B1-existing-audit | do not migrate; revert marker only | deletes the scripts from row 52 |

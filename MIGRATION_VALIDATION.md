@@ -76,3 +76,56 @@ Status: in progress; documentation-only changes.
   `_shift_bdays`, `ints_to_pydatetime`, and `get_date_name_field`.
 - reshape benchmarks for unstack and `get_dummies`.
 - apply/astype/fillna/take/value_counts benchmarks for Batch 8.
+
+## Batch 2a: index/search primitives and groupsort unroll
+
+Status: implemented as a narrow sub-batch.
+
+### Source commits covered
+
+- `0744c0555f` / reconstructed `8d1d415`: `BaseMultiIndexCodesEngine`
+  initialization uses one `int64` labels array and a `uint64` view, and computes
+  `level_has_nans` vectorized from the shifted codes.
+- `df0c75b9fd` / reconstructed `0b060de`: duplicate export of the same
+  `BaseMultiIndexCodesEngine` optimization.
+- `53b373262d` / reconstructed `29f4090`: typed Cython binary-search hooks from
+  `index_class_helper.pxi.in`; migrated for non-complex unmasked engines.
+- `403df2a143` / reconstructed `928c75c`: only the `groupsort_indexer` count and
+  output loop unroll was migrated in this sub-batch. The join take helper part is
+  still pending because it changes join control flow and needs targeted tests.
+
+### pandas3 adaptation notes
+
+- Kept pandas3's existing `ObjectEngine._get_loc_duplicates` implementation,
+  which already uses `_bin_search` / `_bin_search_right` to preserve tuple-key
+  semantics. Therefore reconstructed `b14a455` was not mechanically copied.
+- Added `_searchsorted_right` beside `_searchsorted_left` and routed duplicate
+  monotonic lookup through these hooks.
+- Added numeric Cython type imports required by generated typed search methods.
+- Left the larger many-to-many `sort=False` join rewrite and object join indexer
+  specializations pending.
+
+### Checks executed
+
+- `git diff --check`
+- Static inspection of edited declarations in:
+  - `pandas/_libs/index.pyx`
+  - `pandas/_libs/index_class_helper.pxi.in`
+  - `pandas/_libs/algos.pyx`
+- `python -m cython --version` to check compile-tool availability.
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Full pandas tests: not run because the active environment cannot rebuild the
+  edited Cython extensions.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- Build pandas3 extensions with the project-supported Meson/Cython environment.
+- Run focused index/join tests after rebuild:
+  - `python -m pytest pandas/tests/indexes/multi`
+  - `python -m pytest pandas/tests/indexes/test_engines.py`
+  - `python -m pytest pandas/tests/reshape/merge`
+- Run ASV for `groupsort_indexer` consumers and MultiIndex engine construction.

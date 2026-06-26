@@ -707,3 +707,52 @@ Status: implemented.
   - targeted full ASV runs for `xiecheng.GroupByAgg`,
     `xiecheng.MergeJoin`, `xiecheng.StringCategorical`, and
     `xiecheng.Constructor`.
+
+## Batch 5a: add_overflowsafe contiguous fast paths
+
+Status: implemented.
+
+### Source commits covered
+
+- `9e640a5d2c` / reconstructed `da350b3`: use raw pointers for contiguous
+  add_overflowsafe operands instead of `PyArray_MultiIter`.
+- `3f77b3b691` / reconstructed `92c98b7`: add a left-contiguous/right-scalar
+  fast path and tighten same-shape checks.
+- `82081460b3` / reconstructed `c3c0728`: cache contiguity flags and add
+  scalar/same-shape tests.
+
+### pandas3 adaptation notes
+
+- Replaced pandas3 `add_overflowsafe` loop in
+  `pandas/_libs/tslibs/np_datetime.pyx` with three paths:
+  left C-contiguous plus scalar right, both operands C-contiguous and same
+  shape, and the existing `PyArray_MultiIter` fallback.
+- Preserved pandas3 overflow behavior by keeping the outer `try`/`except`
+  around all paths under `@cython.overflowcheck(True)`.
+- Added tests for scalar, same-shape with NaT, non-contiguous fallback, and
+  overflow raising.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `9e640a5d2c`, `3f77b3b691`, and `82081460b3`
+  - reconstructed pandas2 final implementation at `c3c0728`
+  - pandas3 current `add_overflowsafe`
+- `python -m py_compile pandas3/pandas/tests/tslibs/test_np_datetime.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/tslibs/test_np_datetime.py -k AddOverflowSafe`
+  - `python -m pytest pandas/tests/arrays/timedeltas -k add`
+  - `python -m pytest pandas/tests/arithmetic -k "datetime or timedelta"`
+- Benchmark datetime/timedelta array addition for scalar, contiguous same-shape,
+  and broadcast/non-contiguous cases.

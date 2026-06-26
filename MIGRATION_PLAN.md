@@ -89,7 +89,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 27 | `d019bc4d8e` | group_cumprod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 28 | `63b8520f8c` | group_shift_indexer性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 29 | `171fe464a6` | take_xxx 消减引用计数增减 | algorithms | B1-existing-audit | audit covered by `28df2030b5` | `_libs/algos.pyx`, `_libs/algos_take_helper.pxi.in` |
-| 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
+| 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx` |
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | not migrated: reverted by `0b958ce8fd` after MergeJoin failure | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
@@ -138,10 +138,10 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | not directly migrated: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |
 | 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
 | 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | migrated in object construction batch | `core/dtypes/cast.py`, tests |
-| 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
+| 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx` |
 | 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
 | 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
-| 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx`, tests |
+| 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx`, tests |
 | 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | pending | `ccalendar.pyx`, `offsets.pyx`, `core/dtypes/cast.py`, tests |
 | 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
 | 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |

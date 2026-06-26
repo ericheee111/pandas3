@@ -82,7 +82,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | skipped as backward step per `28df2030b5`; recheck index part in B2 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
 | 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
-| 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | pending | `_libs/window/aggregations.pyx` |
+| 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | migrated in roll_sum batch | `_libs/window/aggregations.pyx` |
 | 24 | `2777612697` | kh put likely | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 25 | `598e709a9b` | group_cummin_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 26 | `e38ed47c0e` | group_all_any 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |

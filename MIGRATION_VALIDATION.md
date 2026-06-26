@@ -447,3 +447,39 @@ Status: implemented for dense get_dummies; unstack patch not directly migrated.
   - `python -m pytest pandas/tests/reshape/test_reshape.py -k unstack`
 - Benchmark `reshape.GetDummies.time_get_dummies_1d` and dense/sparse
   get_dummies variants with wide cardinality.
+
+## Batch 7b: roll_sum loop structure
+
+Status: implemented.
+
+### Source commits covered
+
+- `66863407cc` / reconstructed `4d53c7d`: move the monotonic-window
+  `roll_sum` branch out of the per-row loop, cache previous start/end bounds,
+  and avoid redundant non-monotonic cleanup stores.
+
+### pandas3 adaptation notes
+
+- Applied to pandas3's current `pandas/_libs/window/aggregations.pyx`
+  `roll_sum` implementation.
+- Kept skiplist changes from `91019df988` separate because they alter memory
+  layout and allocator behavior in `skiplist.h`.
+
+### Checks executed
+
+- `git diff --check`
+- Static inspection of `pandas/_libs/window/aggregations.pyx`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/window/test_rolling.py -k sum`
+  - `python -m pytest pandas/tests/window/test_expanding.py -k sum`
+- Benchmark rolling sum/mean workloads with monotonic and non-monotonic bounds.

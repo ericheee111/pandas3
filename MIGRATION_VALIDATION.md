@@ -661,3 +661,49 @@ Status: implemented.
   - `python -m pytest pandas/tests/series/methods/test_rank.py`
 - Benchmark rolling quantile/median and ranking workloads that exercise the
   skiplist insert/remove/get paths.
+
+## Batch 9a: Xiecheng ASV benchmark suite
+
+Status: implemented.
+
+### Source commits covered
+
+- `a3739ab1e4` / reconstructed `0d05357`: add initial Xiecheng benchmark file.
+- `42b376312f` / reconstructed `f2dc10f`: add DataFrame construction benchmark.
+- `baca9d6de2` / reconstructed `4d3e2e5`: fix categorical benchmark mutation.
+- `fcdd01e0a4` / reconstructed `d12115c`: update data generation to reuse
+  precomputed arrays for construction benchmarks.
+
+### pandas3 adaptation notes
+
+- Added `asv_bench/benchmarks/xiecheng.py` using the final exported benchmark
+  shape instead of replaying intermediate states.
+- Converted non-ASCII section comments to concise ASCII structure and renamed
+  the duplicate `time_groupby_agg_count` benchmark to
+  `time_groupby_agg_nunique`.
+- Preserved the later fixes: object arrays for string-like columns,
+  precomputed constructor inputs, and writing categorical conversions into new
+  columns.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `a3739ab1e4`, `42b376312f`, `baca9d6de2`, and
+    `fcdd01e0a4`
+  - reconstructed pandas2 final benchmark file at `d12115c`
+- `python -m py_compile pandas3/asv_bench/benchmarks/xiecheng.py`
+- `git diff --check`
+
+### Checks not executed
+
+- ASV: not run in this environment.
+- Runtime benchmark import/execution: active Python cannot import pandas because
+  NumPy is missing.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m asv run -b xiecheng --quick`
+  - targeted full ASV runs for `xiecheng.GroupByAgg`,
+    `xiecheng.MergeJoin`, `xiecheng.StringCategorical`, and
+    `xiecheng.Constructor`.

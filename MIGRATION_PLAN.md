@@ -92,7 +92,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | pending | `_libs/lib.pyx` |
 | 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | pending; must reconcile with rollback `0b958ce8fd` | `_libs/algos.pyx` |
-| 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | pending | `_libs/lib.pyx`, `core/dtypes/cast.py` |
+| 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
 | 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
 | 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/skiplist.h` |
@@ -137,7 +137,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | pending | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
 | 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | pending | `_libs/reshape.pyx` |
 | 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
-| 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | pending | `core/dtypes/cast.py`, tests |
+| 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | migrated in object construction batch | `core/dtypes/cast.py`, tests |
 | 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
 | 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
 | 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |

@@ -303,3 +303,51 @@ Status: partially implemented; partially already covered by pandas3.
   - `python -m pytest pandas/tests/dtypes/test_missing.py -k checknull`
 - Benchmark kth-smallest/quantile-style workloads, fillna forward/backward
   workloads, and object/string isnull workloads from the private ASV suite.
+
+## Batch 3a: object-array construction helpers
+
+Status: implemented.
+
+### Source commits covered
+
+- `fefbc7b5a4` / reconstructed `bc9ee0d`: move
+  `construct_1d_object_array_from_listlike` into a Cython helper for top-level
+  object copying.
+- `d72753640f` / reconstructed `b7cda5d`: use direct NumPy object-array
+  construction for flat list/tuple inputs while preserving nested list-like
+  behavior through the helper fallback.
+
+### pandas3 adaptation notes
+
+- Added a `pandas._libs.lib` stub declaration because pandas3 maintains
+  `_libs/lib.pyi`.
+- Kept pandas3's existing `is_list_like` helper and typing around
+  `construct_1d_object_array_from_listlike`.
+- Did not include the unrelated `Py_INCREF` call-site casts from the earlier
+  pandas2 commit because pandas3's current imports and Cython state do not
+  require them for this helper.
+
+### Checks executed
+
+- `python -m py_compile pandas/core/dtypes/cast.py`
+- `python -m py_compile pandas/tests/dtypes/cast/test_construct_object_arr.py`
+- `git diff --check`
+- Static inspection of:
+  - `pandas/_libs/lib.pyx`
+  - `pandas/_libs/lib.pyi`
+  - `pandas/core/dtypes/cast.py`
+  - `pandas/tests/dtypes/cast/test_construct_object_arr.py`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/dtypes/cast/test_construct_object_arr.py`
+- Benchmark object-array construction from flat tuples/lists, nested lists,
+  generators, and ndarray inputs.

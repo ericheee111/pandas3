@@ -210,3 +210,45 @@ Status: implemented.
 - Rebuild pandas3 extensions in a complete development environment.
 - Run hashtable/factorize tests and any SwissTable/legacy hashtable coverage.
 - Benchmark factorize/hashtable-heavy workloads.
+
+## Batch 6a: stable sort controls for safe_sort
+
+Status: implemented.
+
+### Source commits covered
+
+- `51a2b98159` / reconstructed `26d98b8`: use stable sorting in
+  `safe_sort` for ARM-friendly factorize sorting.
+- `31a63abb20` / reconstructed `84722ae`: extend stable sorting to the
+  `safe_sort` remapping and mixed-type fallback argsort calls.
+- `1c4c300a36` / reconstructed `e81e938`: add an explicit `kind` parameter
+  to `safe_sort` and call it with `kind="stable"` from `factorize(sort=True)`.
+
+### pandas3 adaptation notes
+
+- Kept `safe_sort` default behavior at `kind="quicksort"` for external callers.
+- Threaded `SortKind` through pandas3's current `safe_sort` implementation,
+  including the mixed-integer fallback and the code remapping reverse argsort.
+- Preserved the existing pandas3 SwissTable-aware `_get_hashtable_algo` path
+  added by the earlier migration commits.
+
+### Checks executed
+
+- `python -m py_compile pandas/core/algorithms.py`
+- `git diff --check`
+- Static inspection of `pandas/core/algorithms.py` call sites touched by the
+  batch.
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/test_algorithms.py`
+  - `python -m pytest pandas/tests/test_sorting.py`
+- Benchmark `factorize(sort=True)`, mixed object `safe_sort`, and any
+  architecture-specific ARM sorting workloads from the private ASV suite.

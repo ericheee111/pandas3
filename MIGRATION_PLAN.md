@@ -134,8 +134,8 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
-| 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | pending | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
-| 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | pending | `_libs/reshape.pyx` |
+| 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | migrated in dense get_dummies batch | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
+| 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | not directly migrated: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |
 | 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
 | 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | migrated in object construction batch | `core/dtypes/cast.py`, tests |
 | 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |

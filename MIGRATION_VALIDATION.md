@@ -398,3 +398,52 @@ Status: implemented.
   - `python -m pytest pandas/tests/indexes/test_engines.py -k object`
 - Benchmark `ObjectEngine.get_loc`, object-array equality, tuple zipping,
   and MultiIndex/grouping workloads that call `fast_zip`.
+
+## Batch 4a: dense get_dummies helper
+
+Status: implemented for dense get_dummies; unstack patch not directly migrated.
+
+### Source commits covered
+
+- `15dba60291` / reconstructed `d47726a`: add a low-level dense get_dummies
+  writer that fills the Fortran-order output buffer from factorized codes.
+- `8232deb8a0` / reconstructed `cdd104a`: audited but not directly migrated;
+  the pandas2 patch splits `new_mask` writes from numeric value writes, while
+  pandas3's current `libreshape.unstack` signature no longer receives a
+  `new_mask` argument.
+
+### pandas3 adaptation notes
+
+- Added `_get_dummies_dense_from_codes` to `pandas._libs.reshape` and the
+  pandas3 `.pyi` stub.
+- Kept the small-cardinality path in Python because column-wise writes are
+  efficient on the Fortran-order result matrix.
+- Preserved fallback behavior for dtypes not covered by the fused Cython helper.
+- Did not change `unstack`; porting row 76 would require a pandas3-specific
+  redesign across the current reshape caller and mask handling.
+
+### Checks executed
+
+- `python -m py_compile pandas/core/reshape/encoding.py`
+- `python -m py_compile pandas/tests/reshape/test_get_dummies.py`
+- `git diff --check`
+- Static inspection of:
+  - `pandas/_libs/reshape.pyx`
+  - `pandas/_libs/reshape.pyi`
+  - `pandas/core/reshape/encoding.py`
+  - `pandas/tests/reshape/test_get_dummies.py`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/reshape/test_get_dummies.py`
+  - `python -m pytest pandas/tests/reshape/test_reshape.py -k unstack`
+- Benchmark `reshape.GetDummies.time_get_dummies_1d` and dense/sparse
+  get_dummies variants with wide cardinality.

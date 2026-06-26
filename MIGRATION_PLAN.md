@@ -91,7 +91,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 29 | `171fe464a6` | take_xxx 消减引用计数增减 | algorithms | B1-existing-audit | audit covered by `28df2030b5` | `_libs/algos.pyx`, `_libs/algos_take_helper.pxi.in` |
 | 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
-| 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | pending; must reconcile with rollback `0b958ce8fd` | `_libs/algos.pyx` |
+| 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | not migrated: reverted by `0b958ce8fd` after MergeJoin failure | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
 | 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
 | 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
@@ -124,7 +124,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 62 | `31a63abb20` | perf: use stable sort for all argsort calls in factorize | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 63 | `1c4c300a36` | perf: Add sort kind in safe_sort | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 64 | `7d7fb8bf02` | PERF: optimize row-wise apply string access and label overhead | python-layer | B8-python-layer | pending | `core/apply.py`, `core/internals/managers.py`, `core/series.py`, tests |
-| 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | pending; this constrains row 32 | `_libs/algos.pyx` |
+| 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | audit recorded: pandas3 already keeps upstream behavior | `_libs/algos.pyx` |
 | 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |

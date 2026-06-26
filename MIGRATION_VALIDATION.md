@@ -483,3 +483,42 @@ Status: implemented.
   - `python -m pytest pandas/tests/window/test_rolling.py -k sum`
   - `python -m pytest pandas/tests/window/test_expanding.py -k sum`
 - Benchmark rolling sum/mean workloads with monotonic and non-monotonic bounds.
+
+## Batch 2c: is_monotonic rollback audit
+
+Status: not migrated by design.
+
+### Source commits covered
+
+- `eaaffa04b4` / reconstructed `979986f`: attempted block-based
+  `is_monotonic` optimization.
+- `0b958ce8fd` / reconstructed `5f74016`: reverted the optimization after a
+  Xiecheng MergeJoin failure and restored upstream behavior.
+
+### pandas3 adaptation notes
+
+- pandas3 currently uses the upstream scalar comparison loop in
+  `pandas/_libs/algos.pyx`.
+- The reverted optimization was not reintroduced because the export history
+  identifies a correctness failure in MergeJoin scenarios.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `eaaffa04b4` and `0b958ce8fd`
+  - `pandas/_libs/algos.pyx` current `is_monotonic`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/indexes/test_monotonic.py`
+  - `python -m pytest pandas/tests/reshape/merge/test_merge.py -k sort`
+- Reproduce the original Xiecheng MergeJoin workload before considering any
+  future replacement optimization.

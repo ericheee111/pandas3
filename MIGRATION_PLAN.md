@@ -114,8 +114,8 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 52 | `120b7a79a1` | Fix benchmark script arguments and test script build process | script | B1-existing-audit | do not migrate; reverted by `6c0d804544` | `scripts/benchmark_swiss_prefetch.py`, `scripts/test_prefetch_server.sh` |
 | 53 | `6c0d804544` | Revert "Fix benchmark script arguments and test script build process" | script | B1-existing-audit | do not migrate; revert marker only | deletes the scripts from row 52 |
 | 54 | `108a06f167` | swisstable get labels batch | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable*` |
-| 55 | `e951e5f721` | 优化 ints_to_pydatetime | tslibs | B5-tslibs | pending | `_libs/tslibs/vectorized.pyx` |
-| 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | pending | `_libs/tslibs/fields.pyx` |
+| 55 | `e951e5f721` | 优化 ints_to_pydatetime | tslibs | B5-tslibs | migrated in vectorized/fields tslibs batch | `_libs/tslibs/vectorized.pyx` |
+| 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | already covered in pandas3 current `fields.pyx` | `_libs/tslibs/fields.pyx` |
 | 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | already covered in pandas3 current `inner_join`/`left_outer_join` sort=False branches | `_libs/join.pyx` |
 | 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | intentionally not migrated by `f39ba34d1d` pending only if later evidence justifies | `_libs/groupby.pyx` |
 | 59 | `fcdd01e0a4` | update xiecheng bench | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |

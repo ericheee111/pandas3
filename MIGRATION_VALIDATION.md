@@ -756,3 +756,47 @@ Status: implemented.
   - `python -m pytest pandas/tests/arithmetic -k "datetime or timedelta"`
 - Benchmark datetime/timedelta array addition for scalar, contiguous same-shape,
   and broadcast/non-contiguous cases.
+
+## Batch 5b: datetime object construction and date-name audit
+
+Status: partially implemented; one source commit already covered.
+
+### Source commits covered
+
+- `e951e5f721` / reconstructed `1b17cae`: optimize `ints_to_pydatetime` by
+  using CPython datetime C constructors.
+- `a22b61a327` / reconstructed `d6455bd`: avoid repeated `.capitalize()` calls
+  inside `get_date_name_field` loops.
+
+### pandas3 adaptation notes
+
+- Ported `ints_to_pydatetime` constructor changes in
+  `pandas/_libs/tslibs/vectorized.pyx`, using `datetime_new`, `date_new`, and
+  `time_new` after `import_datetime()`.
+- Removed the now-unused `date`, `datetime`, and `time` cimports.
+- pandas3 `pandas/_libs/tslibs/fields.pyx` already had the
+  `get_date_name_field` optimization: localized day/month names are capitalized
+  once before the loop and reused.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `e951e5f721` and `a22b61a327`
+  - reconstructed pandas2 commits `1b17cae` and `d6455bd`
+  - pandas3 current `vectorized.pyx` and `fields.pyx`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/series/accessors/test_dt_accessor.py -k "date or time"`
+  - `python -m pytest pandas/tests/indexes/datetimes/test_misc.py -k "day_name or month_name"`
+- Benchmark `timeseries.DatetimeAccessor.time_dt_accessor_date` and
+  `timeseries.DatetimeAccessor.time_dt_accessor_time`.

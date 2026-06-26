@@ -90,7 +90,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 28 | `63b8520f8c` | group_shift_indexer性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 29 | `171fe464a6` | take_xxx 消减引用计数增减 | algorithms | B1-existing-audit | audit covered by `28df2030b5` | `_libs/algos.pyx`, `_libs/algos_take_helper.pxi.in` |
 | 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
-| 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | pending | `_libs/lib.pyx` |
+| 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | pending; must reconcile with rollback `0b958ce8fd` | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
 | 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
@@ -125,13 +125,13 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 63 | `1c4c300a36` | perf: Add sort kind in safe_sort | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 64 | `7d7fb8bf02` | PERF: optimize row-wise apply string access and label overhead | python-layer | B8-python-layer | pending | `core/apply.py`, `core/internals/managers.py`, `core/series.py`, tests |
 | 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | pending; this constrains row 32 | `_libs/algos.pyx` |
-| 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | pending | `_libs/lib.pyx` |
-| 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | pending | `_libs/lib.pyx` |
+| 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
+| 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |
 | 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | pending | `_libs/join.pyx` |
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
-| 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | pending | `_libs/lib.pyx` |
+| 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | pending | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |

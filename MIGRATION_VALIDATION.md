@@ -351,3 +351,50 @@ Status: implemented.
   - `python -m pytest pandas/tests/dtypes/cast/test_construct_object_arr.py`
 - Benchmark object-array construction from flat tuples/lists, nested lists,
   generators, and ndarray inputs.
+
+## Batch 3b: lib object pointer helpers
+
+Status: implemented.
+
+### Source commits covered
+
+- `a60133b265` / reconstructed `49024a3`: add a contiguous fast path to
+  `array_equivalent_object` using raw `PyObject**` array data.
+- `c064f8cd15` / reconstructed `0816e09`: avoid per-element borrowed-object
+  INCREF/DECREF overhead in `eq_NA_compat`.
+- `defb42e92e` / reconstructed `e36f118`: apply the required
+  `PyObject_RichCompareBool` pointer casts in the `array_equivalent_object`
+  fast path.
+- `454f5e27f1` / reconstructed `ba18686`: optimize `fast_zip` tuple writes
+  by writing through `PyObject*` tuple/data pointers.
+
+### pandas3 adaptation notes
+
+- Kept pandas3's existing `array_equivalent_object` behavior for cases where
+  only one side is an ndarray; the contiguous fast path returns `False` for
+  that case just like the existing multi-iterator path.
+- Consolidated the affected CPython APIs into explicit `Python.h` declarations
+  so raw `PyObject*` call sites are typed consistently.
+- Reused the current pandas3 `_libs/lib.pyx` layout, including the previously
+  ported `construct_1d_object_array_from_listlike` helper.
+
+### Checks executed
+
+- `git diff --check`
+- Static inspection of `pandas/_libs/lib.pyx` C API call sites.
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/dtypes/test_missing.py`
+  - `python -m pytest pandas/tests/indexes/test_base.py -k equivalent`
+  - `python -m pytest pandas/tests/indexes/test_engines.py -k object`
+- Benchmark `ObjectEngine.get_loc`, object-array equality, tuple zipping,
+  and MultiIndex/grouping workloads that call `fast_zip`.

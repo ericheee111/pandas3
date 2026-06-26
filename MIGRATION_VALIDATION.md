@@ -1006,3 +1006,50 @@ Status: implemented.
   - `python -m pytest pandas/tests/series/methods/test_value_counts.py`
 - Benchmark object-dtype integer `value_counts(dropna=False)` workloads,
   especially compact-range large arrays and sparse-range fallback cases.
+
+## Batch 8c: putmask scalar and bool take fast paths
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: partially covered for
+  `putmask_without_repeat` scalar assignment and 2-D bool-to-object
+  `take_nd` with NaN fill.
+
+### pandas3 adaptation notes
+
+- Added the scalar `putmask_without_repeat` fast path before listlike shape
+  checks, preserving existing listlike exact-length behavior.
+- Adapted the exported bool-object take helper to pandas3's current
+  `_take_nd_ndarray` `mask_info` and `allow_fill` flow.
+- Kept the fast path restricted to 2-D bool arrays promoted to object output
+  with floating NaN fill; all other take modes continue through existing
+  pandas3 dispatch tables.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `core/array_algos/putmask.py` and
+    `core/array_algos/take.py`
+- `python -m py_compile pandas/core/array_algos/putmask.py
+  pandas/core/array_algos/take.py pandas/tests/array_algos/test_putmask.py
+  pandas/tests/test_take.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/array_algos/test_putmask.py`
+  - `python -m pytest pandas/tests/test_take.py -k "2d_bool or fill_nonna"`
+  - `python -m pytest pandas/tests/internals/test_internals.py -k take_nd`
+- Benchmark bool DataFrame reindex/take paths and scalar `putmask_without_repeat`
+  assignment workloads.

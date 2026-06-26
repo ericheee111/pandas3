@@ -133,14 +133,14 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |
-| 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
+| 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | migrated in dense get_dummies batch | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
 | 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | not directly migrated: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |
 | 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
 | 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | migrated in object construction batch | `core/dtypes/cast.py`, tests |
 | 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx` |
 | 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
-| 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
+| 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx`, tests |
 | 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | pending | `ccalendar.pyx`, `offsets.pyx`, `core/dtypes/cast.py`, tests |
 | 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |

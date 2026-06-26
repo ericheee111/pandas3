@@ -800,3 +800,51 @@ Status: partially implemented; one source commit already covered.
   - `python -m pytest pandas/tests/indexes/datetimes/test_misc.py -k "day_name or month_name"`
 - Benchmark `timeseries.DatetimeAccessor.time_dt_accessor_date` and
   `timeseries.DatetimeAccessor.time_dt_accessor_time`.
+
+## Batch 5c: shift_months and BusinessDay shift fast paths
+
+Status: implemented.
+
+### Source commits covered
+
+- `9686250639` / reconstructed `cd5c272`: add an early-day fast path and
+  contiguous 1-D direct loop for `shift_months(day_opt=None)`.
+- `42c76d772f` / reconstructed `1ab19b1`: avoid full date decomposition in
+  `BusinessDay._shift_bdays` when whole-day epoch arithmetic is sufficient.
+
+### pandas3 adaptation notes
+
+- Added a direct pointer loop for contiguous 1-D `shift_months` inputs when
+  `day_opt is None`; non-contiguous, higher-dimensional, and day-opt paths keep
+  the existing `PyArray_MultiIter` behavior.
+- Avoided `get_days_in_month` for days `<= 28` in the month-shift fast path.
+- Reworked `_shift_bdays` to compute weekday from epoch days and preserve the
+  intraday remainder without `pandas_datetime_to_datetimestruct`.
+- Kept SemiMonth-specific changes from `d1f4ed4720` separate because they also
+  touch `get_days_in_month` and conflict with the already-migrated object-array
+  construction helper.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `9686250639` and `42c76d772f`
+  - reconstructed pandas2 commits `cd5c272` and `1ab19b1`
+  - pandas3 current `pandas/_libs/tslibs/offsets.pyx`
+- `python -m py_compile pandas3/pandas/tests/arithmetic/test_datetime64.py
+  pandas3/pandas/tests/tseries/offsets/test_business_day.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/arithmetic/test_datetime64.py -k shift_months`
+  - `python -m pytest pandas/tests/tseries/offsets/test_business_day.py`
+  - `python -m pytest pandas/tests/tseries/offsets/test_offsets.py -k "DateOffset or BusinessDay"`
+- Benchmark month-shift arithmetic and BusinessDay array addition workloads.

@@ -151,6 +151,23 @@ def test_value_counts_na():
     tm.assert_series_equal(result, expected)
 
 
+def test_value_counts_dense_integer_sorted_large():
+    arr = pd.array(
+        [2] * 300_000 + [0] * 200_000 + [1] * 100_000 + [pd.NA],
+        dtype="Int64",
+    )
+
+    result = arr.value_counts(dropna=False)
+
+    expected = pd.Series(
+        [300_000, 200_000, 100_000, 1],
+        index=pd.Index([2, 0, 1, pd.NA], dtype="Int64"),
+        dtype="Int64",
+        name="count",
+    )
+    tm.assert_series_equal(result, expected)
+
+
 def test_value_counts_empty():
     # https://github.com/pandas-dev/pandas/issues/33317
     ser = pd.Series([], dtype="Int64")

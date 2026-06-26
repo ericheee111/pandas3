@@ -1099,3 +1099,49 @@ Status: implemented.
   - `python -m pytest pandas/tests/arrays/masked/test_arrow_compat.py`
 - Benchmark Arrow integer scalar fillna with single chunk arrays containing
   nulls, and include multi-chunk fallback coverage.
+
+## Batch 8e: nullable integer value_counts dense path
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: partially covered for large
+  nullable integer `value_counts` dense counting.
+
+### pandas3 adaptation notes
+
+- Added `_value_counts_masked_dense_integer` and opt-in keyword arguments on
+  `value_counts_arraylike`; existing callers keep the default hashtable path.
+- Enabled the dense path only for large `BaseMaskedDtype` integer arrays in the
+  default descending sorted count mode.
+- Preserved fallback behavior for negative values, sparse ranges, dense ranges
+  that would allocate too much, and high NA density by returning to
+  `htable.value_count`.
+- Constructed nullable integer result index and counts with the original
+  masked-array dtype so pandas3 nullable dtype semantics are preserved.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `core/algorithms.py` and nullable integer tests
+- `python -m py_compile pandas/core/algorithms.py
+  pandas/tests/arrays/integer/test_function.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/arrays/integer/test_function.py -k value_counts`
+  - `python -m pytest pandas/tests/base/test_value_counts.py -k value_counts`
+  - `python -m pytest pandas/tests/series/methods/test_value_counts.py`
+- Benchmark nullable integer `value_counts(dropna=False)` for compact nonnegative
+  ranges, negative-value fallback, sparse-range fallback, and NA-heavy fallback.

@@ -848,3 +848,52 @@ Status: implemented.
   - `python -m pytest pandas/tests/tseries/offsets/test_business_day.py`
   - `python -m pytest pandas/tests/tseries/offsets/test_offsets.py -k "DateOffset or BusinessDay"`
 - Benchmark month-shift arithmetic and BusinessDay array addition workloads.
+
+## Batch 5d: SemiMonth narrow date rebuild
+
+Status: partially implemented.
+
+### Source commits covered
+
+- `d1f4ed4720` / reconstructed `f074c1e`: narrow
+  `SemiMonthBegin`/`SemiMonthEnd` date rebuild logic and speed up month length
+  checks.
+
+### pandas3 adaptation notes
+
+- Ported the `get_days_in_month` arithmetic shortcut in
+  `pandas/_libs/tslibs/ccalendar.pyx`.
+- Added `fast_days_in_month` in `pandas/_libs/tslibs/offsets.pyx` for
+  SemiMonth internal loops.
+- Split `SemiMonthOffset._apply_array` into Begin and End paths so Begin avoids
+  unnecessary month-end checks and End only clamps to month-end when needed.
+- Added an array-vs-scalar SemiMonth test covering Begin/End and positive/negative
+  offsets.
+- Did not migrate the export commit's `pandas/core/dtypes/cast.py` rollback or
+  deleted tests because those conflict with the already-migrated
+  `construct_1d_object_array_from_listlike` helper and would remove coverage.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `d1f4ed4720`
+  - reconstructed pandas2 commit `f074c1e`
+  - pandas3 current `ccalendar.pyx`, `offsets.pyx`, and object-array helper
+    migration state
+- `python -m py_compile pandas3/pandas/tests/tseries/offsets/test_month.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/tseries/offsets/test_month.py -k SemiMonth`
+  - `python -m pytest pandas/tests/tseries/offsets/test_common.py -k SemiMonth`
+  - `python -m pytest pandas/tests/dtypes/cast/test_construct_object_arr.py`
+- Benchmark SemiMonthBegin/SemiMonthEnd array addition workloads.

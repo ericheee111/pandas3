@@ -142,7 +142,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
 | 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx`, tests |
-| 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | pending | `ccalendar.pyx`, `offsets.pyx`, `core/dtypes/cast.py`, tests |
+| 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | partially migrated: offsets/ccalendar fast paths only; skipped cast.py rollback conflicting with migrated object-array helper | `ccalendar.pyx`, `offsets.pyx`, tests |
 | 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
 | 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
 | 86 | `844af97539` | PERF: maybe_convert_objects homogeneous-block fast path | lib | B1-existing-audit | audit covered by `8e0304f403` | `_libs/lib.pyx`, tests |

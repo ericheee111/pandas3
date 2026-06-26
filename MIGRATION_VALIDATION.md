@@ -613,3 +613,51 @@ already covered.
   - `python -m pytest pandas/tests/reshape/merge/test_merge.py -k sort`
 - Benchmark monotonic object index join workloads and many-to-many
   `sort=False` joins with high duplicate counts.
+
+## Batch 7c: skiplist header optimization
+
+Status: implemented.
+
+### Source commits covered
+
+- `91019df988` / reconstructed `caf7a1d`: optimize skiplist allocation and
+  traversal behavior.
+
+### pandas3 adaptation notes
+
+- Ported the single-allocation `node_t` layout to
+  `pandas/_libs/include/pandas/skiplist.h`, reducing per-node allocator calls
+  from separate node/next/width allocations to one contiguous allocation.
+- Added portable `SL_LIKELY`, `SL_UNLIKELY`, and `SL_PREFETCH_R` macros.
+- Adapted traversal changes in `skiplist_get`, `skiplist_min_rank`,
+  `skiplist_insert`, and `skiplist_remove`, including cached node values,
+  conditional prefetching, and unrolled width updates.
+- Kept pandas3's current `NAN` and `log2` usage instead of reintroducing the
+  pandas2 export's `PANDAS_NAN` and `Log2` helpers.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `91019df988`
+  - reconstructed pandas2 commit `caf7a1d`
+  - pandas3 `pandas/_libs/include/pandas/skiplist.h`
+- Confirmed pandas3 Meson uses `c_std=c17` and `cpp_std=c++17`.
+- `git diff --check`
+
+### Checks not executed
+
+- Standalone C syntax check: no `gcc`, `cc`, or `clang` binary is available in
+  the active shell environment.
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/window/test_rolling.py -k "quantile or median"`
+  - `python -m pytest pandas/tests/window/test_expanding.py -k "quantile or median"`
+  - `python -m pytest pandas/tests/series/methods/test_rank.py`
+- Benchmark rolling quantile/median and ranking workloads that exercise the
+  skiplist insert/remove/get paths.

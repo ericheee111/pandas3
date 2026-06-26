@@ -95,7 +95,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
 | 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
 | 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/skiplist.h` |
+| 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | migrated in skiplist header batch | `_libs/include/pandas/skiplist.h` |
 | 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 38 | `c60600ce36` | group_min_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 39 | `829e42a602` | group_prod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |

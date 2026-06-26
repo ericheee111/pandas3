@@ -252,3 +252,54 @@ Status: implemented.
   - `python -m pytest pandas/tests/test_sorting.py`
 - Benchmark `factorize(sort=True)`, mixed object `safe_sort`, and any
   architecture-specific ARM sorting workloads from the private ASV suite.
+
+## Batch 6b: algos Cython scalar and fill hot paths
+
+Status: partially implemented; partially already covered by pandas3.
+
+### Source commits covered
+
+- `4c4a5096dc` / reconstructed `4c72539`: replace index arithmetic in
+  `kth_smallest_c` with pointer movement.
+- `0e2677777a` / reconstructed `6438637`: use C `isnan()` for float scalar
+  `checknull`.
+- `706991b28f` / reconstructed `b84fc9f`: audited as already covered by the
+  current pandas3 `pad_2d_inplace` no-limit branch.
+- `38f97b58aa` / reconstructed `d287828`: audited as already covered by the
+  current pandas3 `pad_inplace` no-limit branch.
+- `6fd0359851` / reconstructed `af50d81`: audited as already covered by the
+  current pandas3 `pad_inplace` loop-unroll implementation.
+
+### pandas3 adaptation notes
+
+- Kept the pandas3 `checknull(object val)` signature. The pandas2 patch's
+  `inf_as_na` handling was not restored because that parameter no longer
+  exists in pandas3.
+- Added a narrow test for `np.float64` scalar handling that preserves pandas3
+  semantics: NaN is null, ordinary finite floats and infinities are not.
+- Confirmed current pandas3 already has the pad fast paths, including leading
+  missing-prefix skips, no-limit branches, and 4-way `pad_inplace` unrolling.
+
+### Checks executed
+
+- `python -m py_compile pandas/tests/dtypes/test_missing.py`
+- `git diff --check`
+- Static inspection of:
+  - `pandas/_libs/algos.pyx`
+  - `pandas/_libs/missing.pyx`
+  - `pandas/tests/dtypes/test_missing.py`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/test_algos.py`
+  - `python -m pytest pandas/tests/dtypes/test_missing.py -k checknull`
+- Benchmark kth-smallest/quantile-style workloads, fillna forward/backward
+  workloads, and object/string isnull workloads from the private ASV suite.

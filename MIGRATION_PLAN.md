@@ -99,7 +99,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 38 | `c60600ce36` | group_min_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 39 | `829e42a602` | group_prod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 40 | `4c4a5096dc` | 优化 kth_smallest_c 算法性能，使用指针操作替代数组索引，减少内存访问开销 | algorithms | B6-algorithms | pending | `_libs/algos.pyx` |
+| 40 | `4c4a5096dc` | 优化 kth_smallest_c 算法性能，使用指针操作替代数组索引，减少内存访问开销 | algorithms | B6-algorithms | migrated in algos Cython batch | `_libs/algos.pyx` |
 | 41 | `12c293f745` | 默认启用swisstable | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `core/config_init.py` |
 | 42 | `8c1c10d14f` | swisstable 同步蓝区代码 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashing/hashtable/swisstable files |
 | 43 | `7d2d23951e` | fix debug build | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable.pxd` |
@@ -136,15 +136,15 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | pending | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
 | 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | pending | `_libs/reshape.pyx` |
-| 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | pending | `_libs/algos.pyx` |
+| 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
 | 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | pending | `core/dtypes/cast.py`, tests |
 | 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx` |
-| 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | pending | `_libs/missing.pyx`, tests |
+| 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
 | 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |
 | 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | pending | `_libs/tslibs/np_datetime.pyx`, tests |
 | 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | pending | `ccalendar.pyx`, `offsets.pyx`, `core/dtypes/cast.py`, tests |
-| 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | pending | `_libs/algos.pyx` |
-| 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | pending | `_libs/algos.pyx` |
+| 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
+| 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
 | 86 | `844af97539` | PERF: maybe_convert_objects homogeneous-block fast path | lib | B1-existing-audit | audit covered by `8e0304f403` | `_libs/lib.pyx`, tests |
 | 87 | `aae84a43d5` | PERF: avoid redundant Python-to-C complex conversion | lib | B1-existing-audit | audit covered by `8e0304f403` | `_libs/lib.pyx` |
 | 88 | `eba6d76f8c` | PERF: nancorr high-validity mask fast path | algorithms | B1-existing-audit | audit covered by `d978bd13ee` | `_libs/algos.pyx` |

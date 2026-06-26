@@ -1256,12 +1256,18 @@ class FrameApply(NDFrameApply):
 
         results = {}
 
+        func = self.func
+        args = self.args
+        kwargs = self.kwargs
+
         for i, v in enumerate(series_gen):
-            results[i] = self.func(v, *self.args, **self.kwargs)
-            if isinstance(results[i], ABCSeries):
+            result = func(v, *args, **kwargs)
+            if isinstance(result, ABCSeries):
                 # If we have a view on v, we need to make a copy because
                 #  series_generator will swap out the underlying data
-                results[i] = results[i].copy(deep=False)
+                result = result.copy(deep=False)
+                object.__setattr__(v, "_row_apply_needs_ref_reset", True)
+            results[i] = result
 
         return results, res_index
 
@@ -1430,6 +1436,16 @@ class FrameColumnApply(FrameApply):
         #  of it.  Kids: don't do this at home.
         ser = self.obj._ixs(0, axis=0)
         mgr = ser._mgr
+        label_to_pos = None
+        if self.columns.is_unique:
+            label_to_pos = {label: pos for pos, label in enumerate(self.columns)}
+        object.__setattr__(
+            ser,
+            "_row_apply_label_to_pos",
+            label_to_pos,
+        )
+        object.__setattr__(ser, "_row_apply_label_to_pos_index", self.columns)
+        object.__setattr__(ser, "_row_apply_needs_ref_reset", False)
 
         is_view = mgr.blocks[0].refs.has_reference()
 
@@ -1464,8 +1480,9 @@ class FrameColumnApply(FrameApply):
                 # GH#35462 re-pin mgr in case setitem changed it
                 ser._mgr = mgr
                 mgr.set_values(arr)
+                object.__setattr__(ser, "_row_apply_values", arr)
                 object.__setattr__(ser, "_name", name)
-                if not is_view:
+                if not is_view and ser._row_apply_needs_ref_reset:
                     # In apply_series_generator we store a shallow copy of the
                     # result, which potentially increases the ref count of this reused
                     # `ser` object (depending on the result of the applied function)
@@ -1473,6 +1490,7 @@ class FrameColumnApply(FrameApply):
                     # the refs here to avoid triggering an unnecessary CoW inside the
                     # applied function (https://github.com/pandas-dev/pandas/pull/56212)
                     mgr.blocks[0].refs = BlockValuesRefs(mgr.blocks[0])
+                    object.__setattr__(ser, "_row_apply_needs_ref_reset", False)
                 yield ser
 
     @staticmethod

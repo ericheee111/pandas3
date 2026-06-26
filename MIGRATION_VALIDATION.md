@@ -897,3 +897,59 @@ Status: partially implemented.
   - `python -m pytest pandas/tests/tseries/offsets/test_common.py -k SemiMonth`
   - `python -m pytest pandas/tests/dtypes/cast/test_construct_object_arr.py`
 - Benchmark SemiMonthBegin/SemiMonthEnd array addition workloads.
+
+## Batch 8a: row-wise apply label cache
+
+Status: implemented.
+
+### Source commits covered
+
+- `7d7fb8bf02` / reconstructed `c8634f7`: optimize row-wise
+  `DataFrame.apply(axis=1)` string label access and reused-Series reference
+  handling.
+- `1246018d48` / reconstructed `391ce67`: partially covered only for the
+  row-wise apply cache infrastructure that row `7d7fb8bf02` depends on.
+
+### pandas3 adaptation notes
+
+- Added a `Series`-side row-apply label-to-position cache and consulted it
+  before `apply_if_callable` for non-callable labels.
+- Wired `FrameColumnApply.series_generator` to attach the cache to the reused
+  row `Series`, to update the cached row values after `set_values`, and to
+  reset refs only after an applied function returned a `Series`.
+- Kept duplicate-column semantics by enabling the cache only when
+  `self.columns.is_unique`; duplicate labels continue through normal Series
+  lookup.
+- Removed the per-row `BlockPlacement` rebuild from
+  `SingleBlockManager.set_values`, matching the export intent while preserving
+  the existing manager locations for the reused row object.
+- Did not migrate the rest of `1246018d48` in this batch. Its astype, fillna,
+  take, value_counts, Arrow, putmask, and generic-manager changes remain broad
+  and require separate pandas3 semantic review.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `1246018d48` and `7d7fb8bf02`
+  - reconstructed pandas2 commits `391ce67` and `c8634f7`
+  - pandas3 current `core/apply.py`, `core/series.py`, and
+    `core/internals/managers.py`
+- `python -m py_compile pandas/core/apply.py pandas/core/series.py
+  pandas/core/internals/managers.py pandas/tests/apply/test_frame_apply.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- Cython compile check: active Python reports `No module named cython`.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/apply/test_frame_apply.py -k "apply_axis1_label_lookup or apply_axis1_string_label_lookup or apply_axis1_callable_key or duplicate_columns_keep_series_lookup"`
+  - `python -m pytest pandas/tests/apply/test_frame_apply.py -k "axis1 and apply"`
+- Benchmark `frame_methods.Apply.time_frame_apply_axis_1_*` and add a focused
+  benchmark for repeated string-label row access if the existing ASV coverage is
+  insufficient.

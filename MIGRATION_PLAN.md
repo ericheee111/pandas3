@@ -119,11 +119,11 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | already covered in pandas3 current `inner_join`/`left_outer_join` sort=False branches | `_libs/join.pyx` |
 | 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | intentionally not migrated by `f39ba34d1d` pending only if later evidence justifies | `_libs/groupby.pyx` |
 | 59 | `fcdd01e0a4` | update xiecheng bench | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
-| 60 | `1246018d48` | 性能优化：优化 apply、astype、fillna、take 和 value_counts 核心执行路径 | python-layer | B8-python-layer | pending; split before porting | `lib.pyx/.pyi`, `core/algorithms.py`, apply/putmask/take/arrow/generic/internals/series/tests |
+| 60 | `1246018d48` | 性能优化：优化 apply、astype、fillna、take 和 value_counts 核心执行路径 | python-layer | B8-python-layer | partially migrated: row-wise apply cache subset only; remaining broad astype/fillna/take/value_counts pieces still require separate audit | `lib.pyx/.pyi`, `core/algorithms.py`, apply/putmask/take/arrow/generic/internals/series/tests |
 | 61 | `51a2b98159` | perf: Use stable sort in safe_sort for better ARM performance | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 62 | `31a63abb20` | perf: use stable sort for all argsort calls in factorize | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 63 | `1c4c300a36` | perf: Add sort kind in safe_sort | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
-| 64 | `7d7fb8bf02` | PERF: optimize row-wise apply string access and label overhead | python-layer | B8-python-layer | pending | `core/apply.py`, `core/internals/managers.py`, `core/series.py`, tests |
+| 64 | `7d7fb8bf02` | PERF: optimize row-wise apply string access and label overhead | python-layer | B8-python-layer | migrated in row-wise apply cache batch | `core/apply.py`, `core/internals/managers.py`, `core/series.py`, tests |
 | 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | audit recorded: pandas3 already keeps upstream behavior | `_libs/algos.pyx` |
 | 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |

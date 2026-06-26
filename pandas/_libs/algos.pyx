@@ -722,64 +722,62 @@ def pad_inplace(numeric_object_t[:] values, uint8_t[:] mask, limit=None):
         while i < N and mask[i]:
             i += 1
 
-        if i >= N:
-            return
-
-        val = values[i]
-        i += 1
-
-        if no_limit:
-            # No-limit fast path: 4x unrolled loop for better ILP
-            while i + 4 <= N:
-                m0 = mask[i]
-                if m0:
-                    values[i] = val
-                    mask[i] = 0
-                else:
-                    val = values[i]
-
-                m1 = mask[i + 1]
-                if m1:
-                    values[i + 1] = val
-                    mask[i + 1] = 0
-                else:
-                    val = values[i + 1]
-
-                m2 = mask[i + 2]
-                if m2:
-                    values[i + 2] = val
-                    mask[i + 2] = 0
-                else:
-                    val = values[i + 2]
-
-                m3 = mask[i + 3]
-                if m3:
-                    values[i + 3] = val
-                    mask[i + 3] = 0
-                else:
-                    val = values[i + 3]
-
-                i += 4
-
-            while i < N:
-                if mask[i]:
-                    values[i] = val
-                    mask[i] = 0
-                else:
-                    val = values[i]
-                i += 1
-            return
-
-        while i < N:
-            if mask[i]:
-                if fill_count < lim:
-                    values[i] = val
-                    mask[i] = 0
-                    fill_count += 1
-            else:
-                fill_count = 0
-                val = values[i]
+        if i < N:
+            val = values[i]
             i += 1
+
+            if no_limit:
+                # No-limit fast path: 4x unrolled loop for better ILP
+                while i + 4 <= N:
+                    m0 = mask[i]
+                    if m0:
+                        values[i] = val
+                        mask[i] = 0
+                    else:
+                        val = values[i]
+
+                    m1 = mask[i + 1]
+                    if m1:
+                        values[i + 1] = val
+                        mask[i + 1] = 0
+                    else:
+                        val = values[i + 1]
+
+                    m2 = mask[i + 2]
+                    if m2:
+                        values[i + 2] = val
+                        mask[i + 2] = 0
+                    else:
+                        val = values[i + 2]
+
+                    m3 = mask[i + 3]
+                    if m3:
+                        values[i + 3] = val
+                        mask[i + 3] = 0
+                    else:
+                        val = values[i + 3]
+
+                    i += 4
+
+                while i < N:
+                    if mask[i]:
+                        values[i] = val
+                        mask[i] = 0
+                    else:
+                        val = values[i]
+                    i += 1
+
+            else:
+                while i < N:
+                    if mask[i]:
+                        if fill_count < lim:
+                            values[i] = val
+                            mask[i] = 0
+                            fill_count += 1
+                    else:
+                        fill_count = 0
+                        val = values[i]
+                    i += 1
 
 
 @cython.boundscheck(False)
@@ -820,21 +818,20 @@ def pad_2d_inplace(numeric_object_t[:, :] values, uint8_t[:, :] mask, limit=None
                         mask[j, i] = False
                     else:
                         val = values[j, i]
-            return
-
-        for j in range(K):
-            fill_count = 0
-            val = values[j, 0]
-            for i in range(N):
-                if mask[j, i]:
-                    if fill_count >= lim or i == 0:
-                        continue
-                    fill_count += 1
-                    values[j, i] = val
-                    mask[j, i] = False
-                else:
-                    fill_count = 0
-                    val = values[j, i]
+        else:
+            for j in range(K):
+                fill_count = 0
+                val = values[j, 0]
+                for i in range(N):
+                    if mask[j, i]:
+                        if fill_count >= lim or i == 0:
+                            continue
+                        fill_count += 1
+                        values[j, i] = val
+                        mask[j, i] = False
+                    else:
+                        fill_count = 0
+                        val = values[j, i]
 
 
 @cython.boundscheck(False)

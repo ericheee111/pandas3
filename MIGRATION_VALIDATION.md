@@ -1192,3 +1192,54 @@ Status: implemented.
   - `python -m pytest pandas/tests/apply/test_frame_apply.py -k "axis0 and apply"`
 - Benchmark `DataFrame.apply(axis=0)` on homogeneous numeric DataFrames,
   especially functions returning Series with the original index.
+
+## Batch 8g: DataFrame astype/fillna audit
+
+Status: not implemented in this pass.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: audited for DataFrame homogeneous
+  numeric `astype` helpers and object-block dict `fillna` helpers.
+
+### pandas3 adaptation notes
+
+- The exported `astype` helpers were written against pandas2 copy handling,
+  including explicit `copy` decisions. In pandas3, `NDFrame.astype(copy=...)`
+  documents that `copy` is ignored under Copy-on-Write and the method returns a
+  lazy-copy result. Directly porting the pandas2 helper would reintroduce stale
+  copy branching into a 3.x API path.
+- pandas3 `Block.fillna` already contains a scalar Cython fast path for float
+  and object blocks with `limit` or `inplace`, so part of the row60 fillna
+  intent is already covered upstream.
+- The exported dict-object fillna path bypasses the current `BlockManager.apply`
+  flow and carries its own `_AlreadyWarned` handling. That needs a dedicated
+  pandas3 Copy-on-Write and warning-semantics design before it can be safely
+  migrated.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `core/generic.py`, `core/internals/blocks.py`, and
+    `core/internals/managers.py`
+- Compared pandas3 `astype` copy deprecation text and current scalar
+  `Block.fillna` fast path.
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- Treat DataFrame homogeneous numeric `astype` and dict-object `fillna` as a
+  separate design task, not a mechanical port.
+- Before implementing, build targeted CoW tests for:
+  - `DataFrame.astype(..., copy=False/True)` under pandas3 lazy-copy semantics
+  - dict/Series `fillna` with duplicate columns, MultiIndex columns, inplace
+    operation, referenced blocks, and warning behavior
+- Then benchmark homogeneous numeric `astype` and object-block dict `fillna`
+  against the current pandas3 implementation.

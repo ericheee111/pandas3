@@ -3,9 +3,10 @@
     "project": "pandas",
     "project_url": "https://pandas.pydata.org/",
     "repo": "..",
-    "branches": ["main"],
-    "environment_type": "rattler",
+    "branches": ["HEAD"],
+    "environment_type": "conda",
     "show_commit_url": "https://github.com/pandas-dev/pandas/commit/",
+    "pythons": ["3.14"],
     "matrix": {
         "pip+build": [],
         "versioneer[toml]": [],
@@ -24,7 +25,9 @@
         "jinja2": [],
         "meson": [],
         "meson-python": [],
-        "python-build": []
+        "python-build": [],
+        "versioneer[toml]": [],
+        "patchelf": [],
     },
     "exclude": [
         {"environment_type": "conda|rattler", "tables": ""},
@@ -32,10 +35,13 @@
         {"environment_type": "(?!(?:conda|rattler)).*", "tables": null},
         {"environment_type": "(?!(?:conda|rattler)).*", "pytables": ""}
     ],
+    "include": [],
     "conda_channels": ["conda-forge"],
     "build_cache_size": 8,
     "regressions_first_commits": {
         ".*": "0409521665"
+    },
+    "regression_thresholds": {
     },
     "build_command":
     ["python -m build -Cbuilddir=builddir --no-isolation --wheel --outdir {build_cache_dir} {build_dir}"]

@@ -1145,3 +1145,50 @@ Status: implemented.
   - `python -m pytest pandas/tests/series/methods/test_value_counts.py`
 - Benchmark nullable integer `value_counts(dropna=False)` for compact nonnegative
   ranges, negative-value fallback, sparse-range fallback, and NA-heavy fallback.
+
+## Batch 8f: FrameRowApply single-block reuse
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: partially covered for
+  `FrameRowApply` single-block Series reuse and same-index Series result
+  construction.
+
+### pandas3 adaptation notes
+
+- Reused a single column `Series` shell for axis=0 apply only when the DataFrame
+  has one non-extension block.
+- Preserved pandas3's existing fallback path for mixed-dtype and
+  ExtensionArray-backed frames.
+- Integrated with the row-apply reference reset flag already used by the
+  axis=1 migration so returned Series results are shallow-copied before the
+  reusable shell advances.
+- Added a same-index Series result construction fast path to avoid the heavier
+  dict-of-Series DataFrame constructor path when all result Series share the
+  original index object.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `core/apply.py`
+- `python -m py_compile pandas/core/apply.py
+  pandas/tests/apply/test_frame_apply.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/apply/test_frame_apply.py -k "apply_axis0_series_result or returned_series_not_overwritten"`
+  - `python -m pytest pandas/tests/apply/test_frame_apply.py -k "axis0 and apply"`
+- Benchmark `DataFrame.apply(axis=0)` on homogeneous numeric DataFrames,
+  especially functions returning Series with the original index.

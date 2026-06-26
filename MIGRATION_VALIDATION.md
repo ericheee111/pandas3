@@ -129,3 +129,48 @@ Status: implemented as a narrow sub-batch.
   - `python -m pytest pandas/tests/indexes/test_engines.py`
   - `python -m pytest pandas/tests/reshape/merge`
 - Run ASV for `groupsort_indexer` consumers and MultiIndex engine construction.
+
+## Batch 2b: RangeIndex concat helper
+
+Status: implemented.
+
+### Source commits covered
+
+- `1b285b9697` / reconstructed `28b54ab`: move RangeIndex concat planning into
+  a lower-level helper to reduce Python-loop overhead in the all-RangeIndex path.
+
+### pandas3 adaptation notes
+
+- The pandas2 helper was not copied verbatim because pandas3's `_concat`
+  contains behavior added after pandas2:
+  - mixed-index fallback preserves integer `Index` shallow-copy behavior.
+  - repeated identical non-empty ranges use `np.tile` instead of generic
+    concatenation.
+  - single non-empty ranges preserve their original `step`.
+- Added `concat_range_indexes` to `pandas._libs.lib` and its `.pyi` stub.
+- Kept object construction and fallback behavior in `RangeIndex._concat`; the
+  Cython helper returns compact planning tags only.
+
+### Checks executed
+
+- `python -m py_compile pandas/core/indexes/range.py`
+- `git diff --check`
+- Static inspection of:
+  - `pandas/_libs/lib.pyx`
+  - `pandas/_libs/lib.pyi`
+  - `pandas/core/indexes/range.py`
+
+### Checks not executed
+
+- Runtime pandas import/tests: active Python cannot import pandas because NumPy
+  is missing.
+- Cython compile check: active Python reports `No module named cython`.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/indexes/ranges`
+  - `python -m pytest pandas/tests/reshape/concat`
+- Benchmark concat cases involving all `RangeIndex`, repeated identical
+  `RangeIndex`, non-consecutive `RangeIndex`, and mixed index inputs.

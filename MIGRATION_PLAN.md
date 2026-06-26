@@ -129,7 +129,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | pending | `_libs/lib.pyx` |
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |
 | 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | pending | `_libs/join.pyx` |
-| 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | pending | `_libs/lib.pyx`, `core/indexes/range.py` |
+| 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | pending | `_libs/lib.pyx` |
 | 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |

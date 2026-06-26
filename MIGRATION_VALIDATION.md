@@ -562,3 +562,54 @@ Status: already covered in pandas3; no code change.
   - `python -m pytest pandas/tests/indexes/object/test_indexing.py -k get_loc`
 - Benchmark `indexing_engines.ObjectEngineIndexing.time_get_loc` for monotonic
   duplicate object indexes.
+
+## Batch 2e: join indexer object fast paths
+
+Status: implemented for object join indexers; many-to-many sort=False audited as
+already covered.
+
+### Source commits covered
+
+- `07ccc6e28e` / reconstructed `5aa4d2d`: avoid post-hoc reordering for
+  many-to-many grouped joins when `sort=False`.
+- `52f9c792ec` / reconstructed `0a0060b`: add object ndarray specializations
+  for monotonic join indexers.
+
+### pandas3 adaptation notes
+
+- pandas3 already had the `sort=False` grouped join structure in
+  `inner_join` and `left_outer_join`, including direct output generation in
+  original left order.
+- Ported the object-specific `left_join_indexer_unique`,
+  `left_join_indexer`, `inner_join_indexer`, and `outer_join_indexer` helper
+  paths to pandas3 `pandas/_libs/join.pyx`.
+- The fast paths are limited to the object fused-type specialization and
+  C-contiguous input arrays. Other dtypes and non-contiguous arrays continue to
+  use pandas3's existing generic code.
+- Added low-level libjoin tests for object dtype unique, left, inner, and outer
+  monotonic join indexers.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch sections for `07ccc6e28e` and `52f9c792ec`
+  - reconstructed pandas2 commits `5aa4d2d` and `0a0060b`
+  - pandas3 `pandas/_libs/join.pyx` current grouped and indexer paths
+- `python -m py_compile pandas3/pandas/tests/libs/test_join.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/libs/test_join.py`
+  - `python -m pytest pandas/tests/reshape/merge/test_join.py -k sort`
+  - `python -m pytest pandas/tests/reshape/merge/test_merge.py -k sort`
+- Benchmark monotonic object index join workloads and many-to-many
+  `sort=False` joins with high duplicate counts.

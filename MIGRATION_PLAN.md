@@ -116,7 +116,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 54 | `108a06f167` | swisstable get labels batch | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable*` |
 | 55 | `e951e5f721` | 优化 ints_to_pydatetime | tslibs | B5-tslibs | pending | `_libs/tslibs/vectorized.pyx` |
 | 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | pending | `_libs/tslibs/fields.pyx` |
-| 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | pending | `_libs/join.pyx` |
+| 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | already covered in pandas3 current `inner_join`/`left_outer_join` sort=False branches | `_libs/join.pyx` |
 | 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | intentionally not migrated by `f39ba34d1d` pending only if later evidence justifies | `_libs/groupby.pyx` |
 | 59 | `fcdd01e0a4` | update xiecheng bench | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |
 | 60 | `1246018d48` | 性能优化：优化 apply、astype、fillna、take 和 value_counts 核心执行路径 | python-layer | B8-python-layer | pending; split before porting | `lib.pyx/.pyi`, `core/algorithms.py`, apply/putmask/take/arrow/generic/internals/series/tests |
@@ -128,7 +128,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |
-| 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | pending | `_libs/join.pyx` |
+| 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | migrated in object join indexer batch | `_libs/join.pyx` |
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |

@@ -174,3 +174,39 @@ Status: implemented.
   - `python -m pytest pandas/tests/reshape/concat`
 - Benchmark concat cases involving all `RangeIndex`, repeated identical
   `RangeIndex`, non-consecutive `RangeIndex`, and mixed index inputs.
+
+## Batch 7a: khash put micro-optimizations
+
+Status: implemented.
+
+### Source commits covered
+
+- `2777612697` / reconstructed `13e217a`: add portable likely/unlikely branch
+  prediction macros and use them for the common empty-slot path in `kh_put`.
+- `42dc387d2c` / reconstructed `1d031db`: cache `h->keys` and `h->flags` in
+  local pointers inside the `kh_put` macro expansion.
+
+### pandas3 adaptation notes
+
+- Applied only inside the vendored khash macro used by pandas hashtable code.
+- Kept the macro fallback portable for non-GNU/non-Clang compilers.
+- Did not include skiplist allocator/prefetch changes or `roll_sum`; those are
+  larger and remain separate pending B7 items.
+
+### Checks executed
+
+- `git diff --check`
+- Static inspection of `pandas/_libs/include/pandas/vendored/klib/khash.h`
+
+### Checks not executed
+
+- C/Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- Rebuild pandas3 extensions in a complete development environment.
+- Run hashtable/factorize tests and any SwissTable/legacy hashtable coverage.
+- Benchmark factorize/hashtable-heavy workloads.

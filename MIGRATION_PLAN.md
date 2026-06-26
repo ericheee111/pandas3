@@ -83,7 +83,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
 | 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | pending | `_libs/window/aggregations.pyx` |
-| 24 | `2777612697` | kh put likely | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/vendored/klib/khash.h` |
+| 24 | `2777612697` | kh put likely | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 25 | `598e709a9b` | group_cummin_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 26 | `e38ed47c0e` | group_all_any 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 27 | `d019bc4d8e` | group_cumprod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
@@ -130,7 +130,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |
 | 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | pending | `_libs/join.pyx` |
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
-| 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | pending | `_libs/include/pandas/vendored/klib/khash.h` |
+| 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | pending | `_libs/lib.pyx` |
 | 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | pending | `_libs/tslibs/offsets.pyx`, tests |

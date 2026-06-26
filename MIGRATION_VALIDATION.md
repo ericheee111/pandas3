@@ -522,3 +522,43 @@ Status: not migrated by design.
   - `python -m pytest pandas/tests/reshape/merge/test_merge.py -k sort`
 - Reproduce the original Xiecheng MergeJoin workload before considering any
   future replacement optimization.
+
+## Batch 2d: ObjectEngine duplicate lookup audit
+
+Status: already covered in pandas3; no code change.
+
+### Source commits covered
+
+- `72efd58130` / reconstructed `b14a455`: added an
+  `ObjectEngine._get_loc_duplicates` override for monotonic object indexes.
+
+### pandas3 adaptation notes
+
+- pandas3 already has an `ObjectEngine._get_loc_duplicates` override in
+  `pandas/_libs/index.pyx`.
+- The pandas3 implementation uses `_bin_search` and `_bin_search_right` rather
+  than `ndarray.searchsorted`, preserving tuple-as-single-key behavior while
+  keeping the monotonic duplicate fast path.
+- No duplicate migration was applied.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `72efd58130`
+  - reconstructed pandas2 commit `b14a455`
+  - pandas3 `pandas/_libs/index.pyx` current ObjectEngine implementation
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/indexes/base_class/test_indexing.py -k get_loc`
+  - `python -m pytest pandas/tests/indexes/object/test_indexing.py -k get_loc`
+- Benchmark `indexing_engines.ObjectEngineIndexing.time_get_loc` for monotonic
+  duplicate object indexes.

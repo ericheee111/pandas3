@@ -104,7 +104,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 42 | `8c1c10d14f` | swisstable 同步蓝区代码 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashing/hashtable/swisstable files |
 | 43 | `7d2d23951e` | fix debug build | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable.pxd` |
 | 44 | `4423bd227e` | factorize: fix int na_value bug | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable_class_helper.pxi.in` |
-| 45 | `72efd58130` | fix object engine performance in _get_loc_duplicates | index | B2-index-join | pending | `_libs/index.pyx` |
+| 45 | `72efd58130` | fix object engine performance in _get_loc_duplicates | index | B2-index-join | already covered in pandas3: `ObjectEngine._get_loc_duplicates` uses `_bin_search/_bin_search_right` | `_libs/index.pyx` |
 | 46 | `a985978612` | fix stride case in swisstable | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable.pyx`, `_libs/swisstable_class_helper.pxi.in` |
 | 47 | `a3739ab1e4` | 添加携程 benchmark | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |
 | 48 | `42b376312f` | add dataframe construction bench for xiecheng | benchmarks | B9-benchmarks | pending | `asv_bench/benchmarks/xiecheng.py` |

@@ -953,3 +953,56 @@ Status: implemented.
 - Benchmark `frame_methods.Apply.time_frame_apply_axis_1_*` and add a focused
   benchmark for repeated string-label row access if the existing ASV coverage is
   insufficient.
+
+## Batch 8b: object-int64 value_counts dense sorted path
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: partially covered for the
+  object-dtype integer `value_counts(dropna=False)` dense sorted fast path.
+
+### pandas3 adaptation notes
+
+- Added `lib.value_counts_object_int64_dense_sorted` with a dense counting path
+  for object arrays containing only int64-range integer scalars and a compact
+  value range.
+- Integrated the helper into `value_counts_internal` only for large object
+  arrays when `sort=True`, `ascending=False`, `normalize=False`, and
+  `dropna=False`; all other modes fall back to pandas3's existing hashtable
+  implementation.
+- Preserved pandas3 stable sort semantics by treating the helper result as
+  already sorted by descending count with first-occurrence tie order.
+- Adapted the exported Cython implementation to compute the min/max range size
+  through Python integers before casting to `Py_ssize_t`, avoiding signed int64
+  overflow for extreme sparse ranges.
+- Did not migrate the same commit's nullable-integer dense path, astype/fillna,
+  Arrow fill-null, putmask, or take changes in this batch.
+
+### Checks executed
+
+- Static inspection of:
+  - export patch section for `1246018d48`
+  - reconstructed pandas2 commit `391ce67`
+  - pandas3 current `pandas/_libs/lib.pyx`, `pandas/_libs/lib.pyi`, and
+    `pandas/core/algorithms.py`
+- `python -m py_compile pandas/core/algorithms.py
+  pandas/tests/base/test_value_counts.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile check: active Python reports `No module named cython`.
+- Runtime pandas tests: active Python cannot import pandas because NumPy is
+  missing.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After installing/building the pandas3 development environment, run:
+  - `python -m pytest pandas/tests/base/test_value_counts.py -k "object_integer_large_sorted"`
+  - `python -m pytest pandas/tests/base/test_value_counts.py -k value_counts`
+  - `python -m pytest pandas/tests/series/methods/test_value_counts.py`
+- Benchmark object-dtype integer `value_counts(dropna=False)` workloads,
+  especially compact-range large arrays and sparse-range fallback cases.

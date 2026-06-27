@@ -61,7 +61,10 @@ from pandas.util._validators import (
     validate_inclusive,
 )
 
-from pandas.core.dtypes.astype import astype_is_view
+from pandas.core.dtypes.astype import (
+    astype_array_safe,
+    astype_is_view,
+)
 from pandas.core.dtypes.cast import can_hold_element
 from pandas.core.dtypes.common import (
     ensure_object,
@@ -79,6 +82,8 @@ from pandas.core.dtypes.common import (
     pandas_dtype,
 )
 from pandas.core.dtypes.dtypes import (
+    ArrowDtype,
+    BaseMaskedDtype,
     DatetimeTZDtype,
     ExtensionDtype,
     PeriodDtype,
@@ -107,6 +112,7 @@ from pandas.core import (
 )
 from pandas.core.array_algos.replace import should_use_regex
 from pandas.core.arrays import ExtensionArray
+from pandas.core.arrays.masked import BaseMaskedArray
 from pandas.core.base import PandasObject
 from pandas.core.construction import extract_array
 from pandas.core.flags import Flags
@@ -209,6 +215,103 @@ if TYPE_CHECKING:
     )
     from pandas.core.indexers.objects import BaseIndexer
     from pandas.core.resample import Resampler
+
+
+def _maybe_astype_homogeneous_numeric_frame(
+    frame: ABCDataFrame, dtype: DtypeObj, errors: IgnoreRaise
+) -> ABCDataFrame | None:
+    if errors != "raise":
+        return None
+
+    dtype = pandas_dtype(dtype)
+    if isinstance(dtype, ArrowDtype):
+        return None
+
+    column_dtypes = frame._mgr.get_dtypes()
+    if len(column_dtypes) == 0:
+        return None
+
+    if isinstance(dtype, BaseMaskedDtype):
+        if not is_numeric_dtype(dtype):
+            return None
+        if any(
+            (
+                isinstance(source_dtype, ExtensionDtype)
+                and not isinstance(source_dtype, BaseMaskedDtype)
+            )
+            or not is_numeric_dtype(source_dtype)
+            for source_dtype in column_dtypes
+        ):
+            return None
+    else:
+        if not isinstance(dtype, np.dtype) or not is_numeric_dtype(dtype):
+            return None
+        if any(
+            not isinstance(source_dtype, BaseMaskedDtype)
+            or not is_numeric_dtype(source_dtype)
+            for source_dtype in column_dtypes
+        ):
+            return None
+
+    result_arrays = []
+    for arr in frame._iter_column_arrays():
+        if isinstance(dtype, BaseMaskedDtype):
+            if isinstance(arr, BaseMaskedArray):
+                result_arrays.append(arr.astype(dtype, copy=True))
+            elif isinstance(arr, np.ndarray):
+                result_arrays.append(
+                    astype_array_safe(arr, dtype, copy=True, errors=errors)
+                )
+            else:
+                return None
+        else:
+            if not isinstance(arr, BaseMaskedArray):
+                return None
+            result_arrays.append(arr.astype(dtype, copy=True))
+
+    result = type(frame)._from_arrays(
+        result_arrays,
+        columns=frame.columns,
+        index=frame.index,
+        verify_integrity=False,
+    )
+    return result.__finalize__(frame, method="astype")
+
+
+def _maybe_astype_homogeneous_numeric_arrow_frame(
+    frame: ABCDataFrame, dtype: DtypeObj, errors: IgnoreRaise
+) -> ABCDataFrame | None:
+    if errors != "raise":
+        return None
+
+    dtype = pandas_dtype(dtype)
+    if not isinstance(dtype, ArrowDtype) or not is_numeric_dtype(dtype):
+        return None
+
+    column_dtypes = frame._mgr.get_dtypes()
+    if len(column_dtypes) == 0 or any(
+        not isinstance(source_dtype, ArrowDtype)
+        or not is_numeric_dtype(source_dtype)
+        for source_dtype in column_dtypes
+    ):
+        return None
+
+    from pandas.core.arrays.arrow.array import ArrowExtensionArray
+
+    pa_type = dtype.pyarrow_dtype
+    result_arrays = []
+    for arr in frame._iter_column_arrays():
+        if not isinstance(arr, ArrowExtensionArray):
+            return None
+        result_arrays.append(ArrowExtensionArray(arr._pa_array.cast(pa_type)))
+
+    result = type(frame)._from_arrays(
+        result_arrays,
+        columns=frame.columns,
+        index=frame.index,
+        verify_integrity=False,
+    )
+    return result.__finalize__(frame, method="astype")
 
 
 class NDFrame(PandasObject, indexing.IndexingMixin):
@@ -6625,12 +6728,28 @@ class NDFrame(PandasObject, indexing.IndexingMixin):
                 block.values.dtype == dtype for block in self._mgr.blocks
             ):
                 return self.copy(deep=False)
+            if isinstance(self, ABCDataFrame):
+                maybe_result = _maybe_astype_homogeneous_numeric_arrow_frame(
+                    self, dtype, errors
+                )
+                if maybe_result is None:
+                    maybe_result = _maybe_astype_homogeneous_numeric_frame(
+                        self, dtype, errors
+                    )
+                if maybe_result is not None:
+                    return cast("Self", maybe_result)
             # GH 18099/22869: columnwise conversion to extension dtype
             # GH 24704: self.items handles duplicate column names
             results = [ser.astype(dtype, errors=errors) for _, ser in self.items()]
 
         else:
             # else, only a single dtype is given
+            if isinstance(self, ABCDataFrame):
+                maybe_result = _maybe_astype_homogeneous_numeric_frame(
+                    self, dtype, errors
+                )
+                if maybe_result is not None:
+                    return cast("Self", maybe_result)
             new_data = self._mgr.astype(dtype=dtype, errors=errors)
             res = self._constructor_from_mgr(new_data, axes=new_data.axes)
             return res.__finalize__(self, method="astype")
@@ -7185,6 +7304,24 @@ class NDFrame(PandasObject, indexing.IndexingMixin):
             new_data = self._mgr.fillna(value=value, limit=limit, inplace=inplace)
 
         elif isinstance(value, (dict, ABCSeries)):
+            if (
+                axis == 0
+                and isinstance(self._mgr, BlockManager)
+                and self.columns.is_unique
+                and not isinstance(self.columns, MultiIndex)
+            ):
+                new_data = self._mgr.fillna_dict_object(
+                    value=value, limit=limit, inplace=inplace
+                )
+                if new_data is not None:
+                    result = self._constructor_from_mgr(
+                        new_data, axes=new_data.axes
+                    )
+                    if inplace:
+                        self._update_inplace(result)
+                        return self
+                    return result.__finalize__(self, method="fillna")
+
             result = self if inplace else self.copy(deep=False)
             if axis == 1:
                 # Check that all columns in result have the same dtype

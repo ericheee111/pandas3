@@ -1,5 +1,7 @@
 cimport cython
 from cython cimport Py_ssize_t
+from cpython.object cimport PyObject
+from cpython.ref cimport Py_INCREF, Py_DECREF, Py_XDECREF
 from libc.math cimport (
     isnan,
     sqrt,
@@ -239,18 +241,24 @@ def groupsort_indexer(const intp_t[:] index, Py_ssize_t ngroups):
     This is a reverse of the label factorization process.
     """
     cdef:
-        Py_ssize_t i, label, n
+        Py_ssize_t i, label, n, limit
         intp_t[::1] indexer, where, counts
 
     counts = np.zeros(ngroups + 1, dtype=np.intp)
     n = len(index)
     indexer = np.zeros(n, dtype=np.intp)
     where = np.zeros(ngroups + 1, dtype=np.intp)
+    limit = n & ~3
 
     with nogil:
-
         # count group sizes, location 0 for NA
-        for i in range(n):
+        for i in range(0, limit, 4):
+            counts[index[i] + 1] += 1
+            counts[index[i + 1] + 1] += 1
+            counts[index[i + 2] + 1] += 1
+            counts[index[i + 3] + 1] += 1
+
+        for i in range(limit, n):
             counts[index[i] + 1] += 1
 
         # mark the start of each contiguous group of like-indexed data
@@ -258,7 +266,24 @@ def groupsort_indexer(const intp_t[:] index, Py_ssize_t ngroups):
             where[i] = where[i - 1] + counts[i - 1]
 
         # this is our indexer
-        for i in range(n):
+        for i in range(0, limit, 4):
+            label = index[i] + 1
+            indexer[where[label]] = i
+            where[label] += 1
+
+            label = index[i + 1] + 1
+            indexer[where[label]] = i + 1
+            where[label] += 1
+
+            label = index[i + 2] + 1
+            indexer[where[label]] = i + 2
+            where[label] += 1
+
+            label = index[i + 3] + 1
+            indexer[where[label]] = i + 3
+            where[label] += 1
+
+        for i in range(limit, n):
             label = index[i] + 1
             indexer[where[label]] = i
             where[label] += 1
@@ -285,35 +310,36 @@ cdef numeric_t kth_smallest_c(numeric_t* arr,
     in groupby.pyx
     """
     cdef:
-        Py_ssize_t i, j, left, m
+        numeric_t *left_ptr = arr
+        numeric_t *right_ptr = arr + n - 1
+        numeric_t *target_ptr = arr + k
+        numeric_t *pi
+        numeric_t *pj
         numeric_t x
 
-    left = 0
-    m = n - 1
-
-    while left < m:
-        x = arr[k]
-        i = left
-        j = m
+    while left_ptr < right_ptr:
+        x = target_ptr[0]
+        pi = left_ptr
+        pj = right_ptr
 
         while 1:
-            while arr[i] < x:
-                i += 1
-            while x < arr[j]:
-                j -= 1
-            if i <= j:
-                swap(&arr[i], &arr[j])
-                i += 1
-                j -= 1
+            while pi[0] < x:
+                pi += 1
+            while x < pj[0]:
+                pj -= 1
+            if pi <= pj:
+                swap(pi, pj)
+                pi += 1
+                pj -= 1
 
-            if i > j:
+            if pi > pj:
                 break
 
-        if j < k:
-            left = i
-        if k < i:
-            m = j
-    return arr[k]
+        if pj < target_ptr:
+            left_ptr = pi
+        if target_ptr < pi:
+            right_ptr = pj
+    return target_ptr[0]
 
 
 @cython.boundscheck(False)
@@ -357,9 +383,10 @@ def nancorr(const float64_t[:, :] mat, bint cov=False, minp=None):
         int64_t minpv
         float64_t[:, ::1] result
         uint8_t[:, :] mask
+        ndarray[uint8_t, ndim=1] col_all_valid
         int64_t nobs = 0
         float64_t vx, vy, dx, dy, meanx, meany, divisor, ssqdmx, ssqdmy, covxy, val
-        bint no_nans
+        float64_t sumx, sumy, minx, maxx, miny, maxy
 
     N, K = (<object>mat).shape
     if minp is None:
@@ -369,28 +396,65 @@ def nancorr(const float64_t[:, :] mat, bint cov=False, minp=None):
 
     result = np.empty((K, K), dtype=np.float64)
     mask = np.isfinite(mat).view(np.uint8)
-    no_nans = np.asarray(mask).all()
+    col_all_valid = np.ones(K, dtype=np.uint8)
 
     with nogil:
+        # Precompute whether each column is fully finite so we can bypass
+        # per-row mask checks for column pairs that need no filtering.
+        for xi in range(K):
+            for i in range(N):
+                if not mask[i, xi]:
+                    col_all_valid[xi] = 0
+                    break
+
         for xi in range(K):
             for yi in range(xi + 1):
-                # Welford's method for the variance-calculation
-                # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-                nobs = ssqdmx = ssqdmy = covxy = meanx = meany = 0
-
-                if no_nans:
+                if col_all_valid[xi] and col_all_valid[yi]:
+                    # Fast path: both columns are fully valid — no NaN filtering needed.
                     nobs = N
+                    if nobs < minpv:
+                        result[xi, yi] = result[yi, xi] = NaN
+                        continue
+
+                    # Two-pass: sum → mean, then centered sums of squares/cross-products.
+                    # Also track min/max to detect constant columns (zero-variance → NaN).
+                    vx = mat[0, xi]
+                    vy = mat[0, yi]
+                    sumx = minx = maxx = vx
+                    sumy = miny = maxy = vy
+                    for i in range(1, N):
+                        vx = mat[i, xi]
+                        vy = mat[i, yi]
+                        sumx += vx
+                        sumy += vy
+                        if vx < minx:
+                            minx = vx
+                        elif vx > maxx:
+                            maxx = vx
+                        if vy < miny:
+                            miny = vy
+                        elif vy > maxy:
+                            maxy = vy
+
+                    if maxx == minx or maxy == miny:
+                        result[xi, yi] = result[yi, xi] = NaN
+                        continue
+
+                    meanx = sumx / nobs
+                    meany = sumy / nobs
+                    ssqdmx = ssqdmy = covxy = 0
                     for i in range(N):
                         vx = mat[i, xi]
                         vy = mat[i, yi]
                         dx = vx - meanx
                         dy = vy - meany
-                        meanx += 1. / (i + 1) * dx
-                        meany += 1. / (i + 1) * dy
-                        ssqdmx += (vx - meanx) * dx
-                        ssqdmy += (vy - meany) * dy
-                        covxy += (vx - meanx) * dy
+                        ssqdmx += dx * dx
+                        ssqdmy += dy * dy
+                        covxy += dx * dy
                 else:
+                    # Slow path: at least one column has NaNs — use Welford's
+                    # online method with per-row mask filtering.
+                    nobs = ssqdmx = ssqdmy = covxy = meanx = meany = 0
                     for i in range(N):
                         if mask[i, xi] and mask[i, yi]:
                             vx = mat[i, xi]
@@ -661,8 +725,9 @@ def pad_inplace(numeric_object_t[:] values, uint8_t[:] mask, limit=None):
     cdef:
         Py_ssize_t i, N
         numeric_object_t val
-        uint8_t prev_mask
+        uint8_t m0, m1, m2, m3
         int lim, fill_count = 0
+        bint no_limit
 
     N = len(values)
 
@@ -670,31 +735,83 @@ def pad_inplace(numeric_object_t[:] values, uint8_t[:] mask, limit=None):
     if N == 0:
         return
 
-    lim = validate_limit(N, limit)
+    no_limit = limit is None
+    if not no_limit:
+        lim = validate_limit(N, limit)
 
     with nogil(numeric_object_t is not object):
-        val = values[0]
-        prev_mask = mask[0]
-        for i in range(N):
-            if mask[i]:
-                if fill_count >= lim:
-                    continue
-                fill_count += 1
-                values[i] = val
-                mask[i] = prev_mask
+        # Skip the leading missing prefix so the fill loops can always clear
+        # mask[i] directly instead of carrying prev_mask state.
+        i = 0
+        while i < N and mask[i]:
+            i += 1
+
+        if i < N:
+            val = values[i]
+            i += 1
+
+            if no_limit:
+                # No-limit fast path: 4x unrolled loop for better ILP
+                while i + 4 <= N:
+                    m0 = mask[i]
+                    if m0:
+                        values[i] = val
+                        mask[i] = 0
+                    else:
+                        val = values[i]
+
+                    m1 = mask[i + 1]
+                    if m1:
+                        values[i + 1] = val
+                        mask[i + 1] = 0
+                    else:
+                        val = values[i + 1]
+
+                    m2 = mask[i + 2]
+                    if m2:
+                        values[i + 2] = val
+                        mask[i + 2] = 0
+                    else:
+                        val = values[i + 2]
+
+                    m3 = mask[i + 3]
+                    if m3:
+                        values[i + 3] = val
+                        mask[i + 3] = 0
+                    else:
+                        val = values[i + 3]
+
+                    i += 4
+
+                while i < N:
+                    if mask[i]:
+                        values[i] = val
+                        mask[i] = 0
+                    else:
+                        val = values[i]
+                    i += 1
+
             else:
-                fill_count = 0
-                val = values[i]
-                prev_mask = mask[i]
+                while i < N:
+                    if mask[i]:
+                        if fill_count < lim:
+                            values[i] = val
+                            mask[i] = 0
+                            fill_count += 1
+                    else:
+                        fill_count = 0
+                        val = values[i]
+                    i += 1
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def pad_2d_inplace(numeric_object_t[:, :] values, uint8_t[:, :] mask, limit=None):
     cdef:
-        Py_ssize_t i, j, N, K
+        Py_ssize_t i, j, N, K, start
         numeric_object_t val
         int lim, fill_count = 0
+        bint no_limit
 
     K, N = (<object>values).shape
 
@@ -702,22 +819,43 @@ def pad_2d_inplace(numeric_object_t[:, :] values, uint8_t[:, :] mask, limit=None
     if N == 0:
         return
 
-    lim = validate_limit(N, limit)
+    no_limit = limit is None
+    if not no_limit:
+        lim = validate_limit(N, limit)
 
     with nogil(numeric_object_t is not object):
-        for j in range(K):
-            fill_count = 0
-            val = values[j, 0]
-            for i in range(N):
-                if mask[j, i]:
-                    if fill_count >= lim or i == 0:
-                        continue
-                    fill_count += 1
-                    values[j, i] = val
-                    mask[j, i] = False
-                else:
-                    fill_count = 0
-                    val = values[j, i]
+        if no_limit:
+            # No-limit fast path: skip leading missing segment per row,
+            # then do sequential fill without i==0 check in the hot loop.
+            for j in range(K):
+                start = 0
+                while start < N and mask[j, start]:
+                    start += 1
+
+                if start == N:
+                    continue
+
+                val = values[j, start]
+                for i in range(start + 1, N):
+                    if mask[j, i]:
+                        values[j, i] = val
+                        mask[j, i] = False
+                    else:
+                        val = values[j, i]
+        else:
+            for j in range(K):
+                fill_count = 0
+                val = values[j, 0]
+                for i in range(N):
+                    if mask[j, i]:
+                        if fill_count >= lim or i == 0:
+                            continue
+                        fill_count += 1
+                        values[j, i] = val
+                        mask[j, i] = False
+                    else:
+                        fill_count = 0
+                        val = values[j, i]
 
 
 @cython.boundscheck(False)

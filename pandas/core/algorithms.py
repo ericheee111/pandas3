@@ -23,6 +23,7 @@ from pandas._libs import (
     hashtable as htable,
     iNaT,
     lib,
+    swisstable,
 )
 from pandas._libs.missing import NA
 from pandas.util._decorators import set_module
@@ -89,6 +90,7 @@ if TYPE_CHECKING:
         NumpyValueArrayLike,
         RankMethod,
         RankNaOption,
+        SortKind,
         TakeIndexer,
         npt,
     )
@@ -270,14 +272,33 @@ _hashtables = {
     "object": htable.PyObjectHashTable,
 }
 
+# Swiss Table implementations for supported types
+_swisstables = {
+    "float64": swisstable.SwissFloat64Map,
+    "float32": swisstable.SwissFloat32Map,
+    "uint64": swisstable.SwissUInt64Map,
+    "uint32": swisstable.SwissUInt32Map,
+    "uint16": swisstable.SwissUInt16Map,
+    "uint8": swisstable.SwissUInt8Map,
+    "int64": swisstable.SwissInt64Map,
+    "int32": swisstable.SwissInt32Map,
+    "int16": swisstable.SwissInt16Map,
+    "int8": swisstable.SwissInt8Map,
+    "complex128": swisstable.SwissComplex128Map,
+    "complex64": swisstable.SwissComplex64Map,
+}
+
 
 def _get_hashtable_algo(
     values: np.ndarray,
+    use_swisstable: bool = False,
 ) -> tuple[type[htable.HashTable], np.ndarray]:
     """
     Parameters
     ----------
     values : np.ndarray
+    use_swisstable : bool, default False
+        If True and dtype is supported, return Swiss Table class instead of khash.
 
     Returns
     -------
@@ -287,6 +308,11 @@ def _get_hashtable_algo(
     values = _ensure_data(values)
 
     ndtype = _check_object_for_strings(values)
+
+    # Try Swiss Table if enabled and dtype is supported
+    if use_swisstable and ndtype in _swisstables:
+        return _swisstables[ndtype], values
+
     hashtable = _hashtables[ndtype]
     return hashtable, values
 
@@ -482,7 +508,10 @@ def unique_with_mask(values, mask: npt.NDArray[np.bool_] | None = None):
         return values.unique()
 
     original = values
-    hashtable, values = _get_hashtable_algo(values)
+    from pandas.core.config_init import get_use_swisstable
+
+    use_swiss = get_use_swisstable()
+    hashtable, values = _get_hashtable_algo(values, use_swisstable=use_swiss)
 
     table = hashtable(len(values))
     if mask is None:
@@ -501,6 +530,7 @@ unique1d = unique
 
 
 _MINIMUM_COMP_ARR_LEN = 1_000_000
+_VALUE_COUNTS_OBJECT_INT64_SORTED_MIN_LEN = 50_000
 
 
 def isin(comps: ListLike, values: ListLike) -> npt.NDArray[np.bool_]:
@@ -644,7 +674,10 @@ def factorize_array(
         # e.g. test_where_datetimelike_categorical
         na_value = iNaT
 
-    hash_klass, values = _get_hashtable_algo(values)
+    from pandas.core.config_init import get_use_swisstable
+
+    use_swiss = get_use_swisstable()
+    hash_klass, values = _get_hashtable_algo(values, use_swisstable=use_swiss)
 
     table = hash_klass(size_hint or len(values))
     uniques, codes = table.factorize(
@@ -846,6 +879,7 @@ def factorize(
             use_na_sentinel=use_na_sentinel,
             assume_unique=True,
             verify=False,
+            kind="stable",
         )
 
     uniques = _reconstruct_data(uniques, original.dtype, original)
@@ -870,6 +904,7 @@ def value_counts_internal(
 
     index_name = getattr(values, "name", None)
     name = "proportion" if normalize else "count"
+    result_already_sorted = False
 
     if bins is not None:
         from pandas.core.reshape.tile import cut
@@ -900,9 +935,46 @@ def value_counts_internal(
         normalize_denominator = None
         if is_extension_array_dtype(values):
             # handle Categorical and sparse,
-            result = Series(values, copy=False)._values.value_counts(dropna=dropna)
+            extension_values = Series(values, copy=False)._values
+            dense_counts = None
+            if (
+                sort
+                and not ascending
+                and not normalize
+                and isinstance(extension_values.dtype, BaseMaskedDtype)
+                and is_integer_dtype(extension_values.dtype)
+                and len(extension_values) >= _MASKED_DENSE_COUNT_MIN_SIZE
+            ):
+                extension_values = cast("BaseMaskedArray", extension_values)
+                keys, counts, na_counter = value_counts_arraylike(
+                    extension_values._data,
+                    dropna=dropna,
+                    mask=extension_values._mask,
+                    preserve_order=False,
+                    use_masked_dense_integer=True,
+                )
+                dense_counts = counts
+
+                mask_index = np.zeros((len(counts),), dtype=np.bool_)
+                count_mask = mask_index.copy()
+                if na_counter > 0:
+                    mask_index[-1] = True
+
+                arr_type = extension_values.dtype.construct_array_type()
+                values_arr = arr_type(keys, mask_index)  # type: ignore[call-arg]
+                count_arr = arr_type(counts, count_mask)  # type: ignore[call-arg]
+                index = Index(values_arr)
+                result = Series(count_arr, index=index, name=name, copy=False)
+            else:
+                result = extension_values.value_counts(dropna=dropna)
             result.name = name
             result.index.name = index_name
+            if dense_counts is None:
+                counts = result._values
+                if not isinstance(counts, np.ndarray):
+                    counts = np.asarray(counts)
+            else:
+                counts = dense_counts
 
         elif isinstance(values, ABCMultiIndex):
             # GH49558
@@ -916,7 +988,18 @@ def value_counts_internal(
 
         else:
             values = _ensure_arraylike(values, func_name="value_counts")
-            keys, counts, _ = value_counts_arraylike(values, dropna)
+            result = _value_counts_object_int64_dense_sorted(
+                values,
+                sort=sort,
+                ascending=ascending,
+                normalize=normalize,
+                dropna=dropna,
+            )
+            if result is None:
+                keys, counts, _ = value_counts_arraylike(values, dropna)
+            else:
+                keys, counts = result
+                result_already_sorted = True
             if keys.dtype == np.float16:
                 keys = keys.astype(np.float32)
 
@@ -935,7 +1018,7 @@ def value_counts_internal(
 
             result = Series(counts, index=idx, name=name, copy=False)
 
-    if sort:
+    if sort and not result_already_sorted:
         result = result.sort_values(ascending=ascending, kind="stable")
 
     if normalize:
@@ -947,9 +1030,115 @@ def value_counts_internal(
     return result
 
 
+def _value_counts_object_int64_dense_sorted(
+    values: np.ndarray,
+    *,
+    sort: bool,
+    ascending: bool,
+    normalize: bool,
+    dropna: bool,
+) -> tuple[ArrayLike, npt.NDArray[np.int64]] | None:
+    if (
+        not sort
+        or ascending
+        or normalize
+        or dropna
+        or not is_object_dtype(values.dtype)
+        or len(values) < _VALUE_COUNTS_OBJECT_INT64_SORTED_MIN_LEN
+    ):
+        return None
+
+    values = ensure_object(np.asarray(values))
+    result = lib.value_counts_object_int64_dense_sorted(values)
+    if result is None:
+        return None
+
+    keys, counts = result
+    res_keys = _reconstruct_data(keys, values.dtype, values)
+    return res_keys, counts
+
+
+_MASKED_DENSE_COUNT_MIN_SIZE = 1 << 18
+
+
+def _value_counts_masked_dense_integer(
+    values: np.ndarray,
+    dropna: bool,
+    mask: npt.NDArray[np.bool_] | None = None,
+    *,
+    preserve_order: bool = True,
+) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.int64], int] | None:
+    if mask is None or values.ndim != 1 or not is_integer_dtype(values.dtype):
+        return None
+
+    has_na = bool(mask.any())
+    na_counter = 0
+    if has_na:
+        na_counter = int(mask.sum())
+        if na_counter * 64 > len(values):
+            return None
+        valid_values = values[~mask]
+    else:
+        valid_values = values
+
+    valid_count = len(valid_values)
+    if valid_count == 0:
+        if dropna or not has_na:
+            return (
+                np.array([], dtype=np.int64),
+                np.array([], dtype=np.int64),
+                0,
+            )
+
+        return (
+            np.array([0], dtype=np.int64),
+            np.array([na_counter], dtype=np.int64),
+            na_counter,
+        )
+
+    if valid_count < _MASKED_DENSE_COUNT_MIN_SIZE or (valid_values < 0).any():
+        return None
+
+    max_value = valid_values.max()
+    if max_value > np.iinfo(np.intp).max:
+        return None
+
+    range_size = int(max_value) + 1
+    if range_size <= 0 or range_size * 8 > valid_count:
+        return None
+
+    dense_values = valid_values.astype(np.intp, copy=False)
+    dense_counts = np.bincount(dense_values, minlength=range_size)
+    present = np.flatnonzero(dense_counts)
+
+    if preserve_order:
+        first_positions = np.full(range_size, valid_count, dtype=np.intp)
+        np.minimum.at(
+            first_positions,
+            dense_values,
+            np.arange(valid_count, dtype=np.intp),
+        )
+        present = present[np.argsort(first_positions[present], kind="stable")]
+
+    keys = present.astype(np.int64, copy=False)
+    counts = dense_counts[present].astype(np.int64, copy=False)
+
+    if dropna or not has_na:
+        return keys, counts, 0
+
+    keys = np.concatenate([keys, np.array([0], dtype=np.int64)])
+    counts = np.concatenate([counts, np.array([na_counter], dtype=np.int64)])
+    return keys, counts, na_counter
+
+
 # Called once from SparseArray, otherwise could be private
 def value_counts_arraylike(
-    values: np.ndarray, dropna: bool, mask: npt.NDArray[np.bool_] | None = None
+    values: np.ndarray,
+    dropna: bool,
+    mask: npt.NDArray[np.bool_] | None = None,
+    *,
+    preserve_order: bool = True,
+    use_masked_dense_integer: bool = False,
 ) -> tuple[ArrayLike, npt.NDArray[np.int64], int]:
     """
     Parameters
@@ -966,7 +1155,20 @@ def value_counts_arraylike(
     original = values
     values = _ensure_data(values)
 
-    keys, counts, na_counter = htable.value_count(values, dropna, mask=mask)
+    if use_masked_dense_integer:
+        result = _value_counts_masked_dense_integer(
+            values,
+            dropna,
+            mask=mask,
+            preserve_order=preserve_order,
+        )
+    else:
+        result = None
+
+    if result is None:
+        keys, counts, na_counter = htable.value_count(values, dropna, mask=mask)
+    else:
+        keys, counts, na_counter = result
 
     if needs_i8_conversion(original.dtype):
         # datetime, timedelta, or period
@@ -1480,6 +1682,7 @@ def safe_sort(
     use_na_sentinel: bool = True,
     assume_unique: bool = False,
     verify: bool = True,
+    kind: SortKind = "quicksort",
 ) -> AnyArrayLike | tuple[AnyArrayLike, np.ndarray]:
     """
     Sort ``values`` and reorder corresponding ``codes``.
@@ -1535,10 +1738,10 @@ def safe_sort(
         not isinstance(values.dtype, ExtensionDtype)
         and lib.infer_dtype(values, skipna=False) == "mixed-integer"
     ):
-        ordered = _sort_mixed(values)
+        ordered = _sort_mixed(values, kind=kind)
     else:
         try:
-            sorter = values.argsort()
+            sorter = values.argsort(kind=kind)
             ordered = values.take(sorter)
         except (TypeError, decimal.InvalidOperation):
             # Previous sorters failed or were not applicable, try `_sort_mixed`
@@ -1550,7 +1753,7 @@ def safe_sort(
                 # "ndarray[Any, Any]"
                 ordered = _sort_tuples(values)  # type: ignore[arg-type]
             else:
-                ordered = _sort_mixed(values)
+                ordered = _sort_mixed(values, kind=kind)
 
     # codes:
 
@@ -1572,7 +1775,10 @@ def safe_sort(
         # error: Argument 1 to "_get_hashtable_algo" has incompatible type
         # "Union[Index, ExtensionArray, ndarray[Any, Any]]"; expected
         # "ndarray[Any, Any]"
-        hash_klass, values = _get_hashtable_algo(values)  # type: ignore[arg-type]
+        from pandas.core.config_init import get_use_swisstable
+
+        use_swiss = get_use_swisstable()
+        hash_klass, values = _get_hashtable_algo(values, use_swisstable=use_swiss)  # type: ignore[arg-type]
         t = hash_klass(len(values))
         t.map_locations(values)
         # error: Argument 1 to "lookup" of "HashTable" has incompatible type
@@ -1581,7 +1787,7 @@ def safe_sort(
 
     if use_na_sentinel:
         # take_nd is faster, but only works for na_sentinels of -1
-        order2 = sorter.argsort()
+        order2 = sorter.argsort(kind=kind)
         if verify:
             mask = (codes < -len(values)) | (codes >= len(values))
             codes[mask] = -1
@@ -1596,13 +1802,13 @@ def safe_sort(
     return ordered, ensure_platform_int(new_codes)
 
 
-def _sort_mixed(values) -> AnyArrayLike:
+def _sort_mixed(values, kind: SortKind) -> AnyArrayLike:
     """order ints before strings before nulls in 1d arrays"""
     str_pos = np.array([isinstance(x, str) for x in values], dtype=bool)
     null_pos = np.array([isna(x) for x in values], dtype=bool)
     num_pos = ~str_pos & ~null_pos
-    str_argsort = np.argsort(values[str_pos])
-    num_argsort = np.argsort(values[num_pos])
+    str_argsort = np.argsort(values[str_pos], kind=kind)
+    num_argsort = np.argsort(values[num_pos], kind=kind)
     # convert boolean arrays to positional indices, then order by underlying values
     str_locs = str_pos.nonzero()[0].take(str_argsort)
     num_locs = num_pos.nonzero()[0].take(num_argsort)

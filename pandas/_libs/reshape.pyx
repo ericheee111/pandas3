@@ -1,7 +1,12 @@
 cimport cython
 from cython cimport Py_ssize_t
 from numpy cimport (
+    float64_t,
+    int8_t,
+    int16_t,
+    int32_t,
     int64_t,
+    intp_t,
     ndarray,
     uint8_t,
 )
@@ -15,6 +20,38 @@ cnp.import_array()
 
 from pandas._libs.dtypes cimport numeric_object_t
 from pandas._libs.lib cimport c_is_list_like
+
+
+ctypedef fused dummy_fill_t:
+    uint8_t
+    int64_t
+    float64_t
+
+
+ctypedef fused dummy_code_t:
+    int8_t
+    int16_t
+    int32_t
+    int64_t
+    intp_t
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def _get_dummies_dense_from_codes(
+    dummy_fill_t[::1] dummy_mat,
+    const dummy_code_t[::1] codes,
+    Py_ssize_t n_rows,
+) -> None:
+    cdef:
+        Py_ssize_t i
+        dummy_code_t code
+
+    with nogil:
+        for i in range(n_rows):
+            code = codes[i]
+            if code >= 0:
+                dummy_mat[code * n_rows + i] = 1
 
 
 @cython.wraparound(False)

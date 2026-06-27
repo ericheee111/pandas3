@@ -430,6 +430,31 @@ def test_apply_axis1(float_frame):
     assert result == expected
 
 
+def test_apply_axis0_series_result_preserves_index_and_columns():
+    df = DataFrame(
+        np.arange(9.0).reshape(3, 3),
+        index=Index(["x", "y", "z"], name="rows"),
+        columns=Index(["A", "B", "C"], name="cols"),
+    )
+
+    result = df.apply(lambda col: col + 1, axis=0)
+
+    expected = df + 1
+    tm.assert_frame_equal(result, expected)
+
+
+def test_apply_axis0_returned_series_not_overwritten_by_reuse():
+    df = DataFrame(
+        np.arange(9.0).reshape(3, 3),
+        index=Index(["x", "y", "z"]),
+        columns=Index(["A", "B", "C"]),
+    )
+
+    result = df.apply(lambda col: col, axis=0)
+
+    tm.assert_frame_equal(result, df)
+
+
 def test_apply_mixed_dtype_corner():
     df = DataFrame({"A": ["foo"], "B": [1.0]})
     result = df[:0].apply(np.mean, axis=1)
@@ -447,6 +472,46 @@ def test_apply_mixed_dtype_corner_indexing():
 
     result = df.apply(lambda x: x["B"], axis=1)
     expected = Series([1.0], index=range(1))
+    tm.assert_series_equal(result, expected)
+
+
+def test_apply_axis1_label_lookup_uses_row_values_cache():
+    df = DataFrame({"A": [1, 2], "B": [10, 20]})
+
+    result = df.apply(lambda row: row["A"] + row["B"], axis=1)
+
+    expected = Series([11, 22])
+    tm.assert_series_equal(result, expected)
+
+
+def test_apply_axis1_string_label_lookup_bypasses_apply_if_callable(monkeypatch):
+    def raise_if_called(key, obj):
+        raise AssertionError("cached string labels should avoid apply_if_callable")
+
+    df = DataFrame({"a": [1, 2], "b": [10, 20]})
+    monkeypatch.setattr("pandas.core.series.com.apply_if_callable", raise_if_called)
+
+    result = df.apply(lambda row: row["a"] + row["b"], axis=1)
+
+    expected = Series([11, 22])
+    tm.assert_series_equal(result, expected)
+
+
+def test_apply_axis1_callable_key_still_respected():
+    df = DataFrame({"A": [1, 2], "B": [10, 20]})
+
+    result = df.apply(lambda row: row[lambda obj: "A"], axis=1)
+
+    expected = Series([1, 2])
+    tm.assert_series_equal(result, expected)
+
+
+def test_apply_axis1_duplicate_columns_keep_series_lookup_semantics():
+    df = DataFrame([[1, 10], [2, 20]], columns=["A", "A"])
+
+    result = df.apply(lambda row: row["A"].sum(), axis=1)
+
+    expected = Series([11, 22])
     tm.assert_series_equal(result, expected)
 
 

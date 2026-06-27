@@ -21,23 +21,32 @@ from cpython.datetime cimport (
     timedelta,
 )
 from cpython.iterator cimport PyIter_Check
+from cpython.long cimport (
+    PyLong_AsLongLongAndOverflow,
+    PyLong_CheckExact,
+)
 from cpython.number cimport PyNumber_Check
 from cpython.object cimport (
     Py_EQ,
     PyObject,
-    PyObject_RichCompareBool,
 )
-from cpython.ref cimport Py_INCREF
 from cpython.sequence cimport PySequence_Check
 from cpython.tuple cimport (
     PyTuple_New,
-    PyTuple_SET_ITEM,
 )
 from cython cimport (
     Py_ssize_t,
     floating,
 )
 from libc.string cimport memcmp
+
+cdef extern from "Python.h":
+    PyObject *PySequence_Fast(PyObject *o, const char *m)
+    PyObject **PySequence_Fast_ITEMS(PyObject *o)
+    void Py_INCREF(PyObject *o)
+    void Py_DECREF(PyObject *o)
+    int PyObject_RichCompareBool(PyObject *o1, PyObject *o2, int opid) except -1
+    void PyTuple_SET_ITEM(PyObject *p, Py_ssize_t pos, PyObject *o)
 
 from pandas._config import using_string_dtype
 
@@ -408,6 +417,7 @@ def fast_zip(list ndarrays) -> ndarray[object]:
         ndarray[object, ndim=1] result
         flatiter it
         object val, tup
+        PyObject **res_data
 
     k = len(ndarrays)
     n = len(ndarrays[0])
@@ -421,11 +431,12 @@ def fast_zip(list ndarrays) -> ndarray[object]:
         val = PyArray_GETITEM(arr, PyArray_ITER_DATA(it))
         tup = PyTuple_New(k)
 
-        PyTuple_SET_ITEM(tup, 0, val)
-        Py_INCREF(val)
+        PyTuple_SET_ITEM(<PyObject *>tup, 0, <PyObject *>val)
+        Py_INCREF(<PyObject *>val)
         result[i] = tup
         PyArray_ITER_NEXT(it)
 
+    res_data = <PyObject **>result.data
     for j in range(1, k):
         arr = ndarrays[j]
         it = <flatiter>PyArray_IterNew(arr)
@@ -434,8 +445,8 @@ def fast_zip(list ndarrays) -> ndarray[object]:
 
         for i in range(n):
             val = PyArray_GETITEM(arr, PyArray_ITER_DATA(it))
-            PyTuple_SET_ITEM(result[i], j, val)
-            Py_INCREF(val)
+            PyTuple_SET_ITEM(res_data[i], j, <PyObject *>val)
+            Py_INCREF(<PyObject *>val)
             PyArray_ITER_NEXT(it)
 
     return result
@@ -709,9 +720,59 @@ def array_equivalent_object(ndarray left, ndarray right) -> bool:
     cdef:
         Py_ssize_t i, n = left.size
         object x, y
+        PyObject **l_ptr
+        PyObject **r_ptr
         cnp.broadcast mi = cnp.PyArray_MultiIterNew2(left, right)
 
     # Caller is responsible for checking left.shape == right.shape
+
+    if (
+        cnp.PyArray_IS_C_CONTIGUOUS(left)
+        and cnp.PyArray_IS_C_CONTIGUOUS(right)
+        and left.size == right.size
+    ):
+        l_ptr = <PyObject **>cnp.PyArray_DATA(left)
+        r_ptr = <PyObject **>cnp.PyArray_DATA(right)
+
+        for i in range(n):
+            x = <object>l_ptr[i]
+            y = <object>r_ptr[i]
+
+            try:
+                if PyArray_Check(x) and PyArray_Check(y):
+                    if x.shape != y.shape:
+                        return False
+                    if x.dtype == y.dtype == object:
+                        if not array_equivalent_object(x, y):
+                            return False
+                    else:
+                        from pandas.core.dtypes.missing import array_equivalent
+
+                        if not array_equivalent(x, y):
+                            return False
+
+                elif PyArray_Check(x) or PyArray_Check(y):
+                    return False
+                elif (x is C_NA) ^ (y is C_NA):
+                    return False
+                elif not (
+                    PyObject_RichCompareBool(<PyObject *>x, <PyObject *>y, Py_EQ)
+                    or is_matching_na(x, y, nan_matches_none=True)
+                ):
+                    return False
+            except (ValueError, TypeError):
+                if cnp.PyArray_IsAnyScalar(x) != cnp.PyArray_IsAnyScalar(y):
+                    return False
+                elif (
+                    not (cnp.PyArray_IsPythonScalar(x) or cnp.PyArray_IsPythonScalar(y))
+                    and not (isinstance(x, type(y)) or isinstance(y, type(x)))
+                ):
+                    return False
+                elif check_na_tuples_nonequal(x, y):
+                    return False
+                raise
+
+        return True
 
     for i in range(n):
         # Analogous to: x = left[i]
@@ -740,7 +801,7 @@ def array_equivalent_object(ndarray left, ndarray right) -> bool:
             elif (x is C_NA) ^ (y is C_NA):
                 return False
             elif not (
-                PyObject_RichCompareBool(x, y, Py_EQ)
+                PyObject_RichCompareBool(<PyObject *>x, <PyObject *>y, Py_EQ)
                 or is_matching_na(x, y, nan_matches_none=True)
             ):
                 return False
@@ -1203,8 +1264,8 @@ def indices_fast(ndarray[intp_t, ndim=1] index, const int64_t[:] labels, list ke
                     tup = PyTuple_New(k)
                     for j in range(k):
                         val = keys[j][sorted_labels[j][i - 1]]
-                        PyTuple_SET_ITEM(tup, j, val)
-                        Py_INCREF(val)
+                        PyTuple_SET_ITEM(<PyObject *>tup, j, <PyObject *>val)
+                        Py_INCREF(<PyObject *>val)
                 result[tup] = index[start:i]
             start = i
         cur = lab
@@ -1216,8 +1277,8 @@ def indices_fast(ndarray[intp_t, ndim=1] index, const int64_t[:] labels, list ke
         tup = PyTuple_New(k)
         for j in range(k):
             val = keys[j][sorted_labels[j][n - 1]]
-            PyTuple_SET_ITEM(tup, j, val)
-            Py_INCREF(val)
+            PyTuple_SET_ITEM(<PyObject *>tup, j, <PyObject *>val)
+            Py_INCREF(<PyObject *>val)
     result[tup] = index[start:]
 
     return result
@@ -2710,6 +2771,171 @@ def maybe_convert_numeric(
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+cdef object _maybe_convert_objects_exact_numeric_fastpath(
+    ndarray[object] objects,
+    bint safe,
+    bint convert_to_nullable_dtype,
+):
+    """
+    Fast path for exact builtin numeric families in 1-D object arrays.
+
+    When all elements belong to the same Python builtin type family
+    (bool, float, or int), we can directly produce the converted array
+    without allocating the full set of parallel arrays (floats, complexes,
+    ints, uints, bools, mask) that the general two-pass path requires.
+
+    Returns None if the fast path cannot be applied, in which case the
+    caller falls through to the general maybe_convert_objects logic.
+    """
+    cdef:
+        Py_ssize_t i, n = objects.size
+        int family = 0
+        bint saw_missing = False
+        bint saw_negative = False
+        bint saw_large_uint = False
+        object val
+        ndarray[float64_t] floats
+        ndarray[int64_t] ints
+        ndarray[uint64_t] uints
+        ndarray[uint8_t] bools
+        ndarray[uint8_t] mask
+
+    if safe or n == 0:
+        return None
+
+    for i in range(n):
+        val = objects[i]
+
+        if val is None:
+            saw_missing = True
+            continue
+
+        if val is C_NA:
+            return None
+
+        if type(val) is bool:
+            if family == 0:
+                family = 1
+            elif family != 1:
+                return None
+        elif type(val) is float:
+            if util.is_nan(val):
+                saw_missing = True
+            if family == 0:
+                family = 2
+            elif family != 2:
+                return None
+        elif type(val) is int:
+            if family == 0:
+                family = 3
+            elif family != 3:
+                return None
+
+            if val < 0:
+                if val < oINT64_MIN:
+                    return None
+                saw_negative = True
+            else:
+                if val > oUINT64_MAX:
+                    return None
+                if val > oINT64_MAX:
+                    saw_large_uint = True
+
+            if saw_negative and saw_large_uint:
+                return None
+        else:
+            return None
+
+    if family == 0:
+        return None
+
+    if family == 1:
+        # bool family
+        if saw_missing and not convert_to_nullable_dtype:
+            return None
+
+        bools = np.empty(n, dtype="u1")
+        mask = np.zeros(n, dtype="u1")
+        for i in range(n):
+            val = objects[i]
+            if val is None or (type(val) is float and util.is_nan(val)):
+                mask[i] = 1
+                bools[i] = 0
+            else:
+                bools[i] = val
+
+        if saw_missing:
+            from pandas.core.arrays import BooleanArray
+
+            return BooleanArray(bools.view(np.bool_), mask.view(np.bool_))
+        return bools.view(np.bool_)
+
+    if family == 2:
+        # float family
+        floats = np.empty(n, dtype="f8")
+        for i in range(n):
+            val = objects[i]
+            if val is None or (type(val) is float and util.is_nan(val)):
+                floats[i] = NaN
+            else:
+                floats[i] = val
+        return floats
+
+    # family == 3: int family
+    if saw_missing:
+        if convert_to_nullable_dtype:
+            mask = np.zeros(n, dtype="u1")
+            if saw_large_uint:
+                uints = np.empty(n, dtype="u8")
+                for i in range(n):
+                    val = objects[i]
+                    if val is None or (type(val) is float and util.is_nan(val)):
+                        mask[i] = 1
+                        uints[i] = 0
+                    else:
+                        uints[i] = val
+
+                from pandas.core.arrays import IntegerArray
+
+                return IntegerArray(uints, mask.view(np.bool_))
+
+            ints = np.empty(n, dtype="i8")
+            for i in range(n):
+                val = objects[i]
+                if val is None or (type(val) is float and util.is_nan(val)):
+                    mask[i] = 1
+                    ints[i] = 0
+                else:
+                    ints[i] = val
+
+            from pandas.core.arrays import IntegerArray
+
+            return IntegerArray(ints, mask.view(np.bool_))
+
+        # missing values without nullable dtype -> fall back to float
+        floats = np.empty(n, dtype="f8")
+        for i in range(n):
+            val = objects[i]
+            if val is None or (type(val) is float and util.is_nan(val)):
+                floats[i] = NaN
+            else:
+                floats[i] = val
+        return floats
+
+    if saw_large_uint:
+        uints = np.empty(n, dtype="u8")
+        for i in range(n):
+            uints[i] = objects[i]
+        return uints
+
+    ints = np.empty(n, dtype="i8")
+    for i in range(n):
+        ints[i] = objects[i]
+    return ints
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def maybe_convert_objects(ndarray[object] objects,
                           *,
                           bint try_float=False,
@@ -2756,6 +2982,8 @@ def maybe_convert_objects(ndarray[object] objects,
         ndarray[uint8_t] mask
         Seen seen = Seen()
         object val
+        object result
+        complex128_t zval
         float64_t fnan = NaN
 
     if dtype_if_all_nat is not None:
@@ -2768,6 +2996,13 @@ def maybe_convert_objects(ndarray[object] objects,
             )
 
     n = len(objects)
+
+    if convert_numeric and not convert_non_numeric:
+        result = _maybe_convert_objects_exact_numeric_fastpath(
+            objects, safe, convert_to_nullable_dtype
+        )
+        if result is not None:
+            return result
 
     floats = cnp.PyArray_EMPTY(1, objects.shape, cnp.NPY_FLOAT64, 0)
     complexes = cnp.PyArray_EMPTY(1, objects.shape, cnp.NPY_COMPLEX128, 0)
@@ -2822,8 +3057,9 @@ def maybe_convert_objects(ndarray[object] objects,
                 break
         elif util.is_integer_object(val):
             seen.int_ = True
-            floats[i] = <float64_t>val
-            complexes[i] = <double complex>val
+            zval = <double complex>val
+            complexes[i] = zval
+            floats[i] = zval.real
             if not seen.null_ or convert_to_nullable_dtype:
                 seen.saw_int(val)
 
@@ -3182,6 +3418,79 @@ def map_infer_mask(
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+def value_counts_object_int64_dense_sorted(ndarray[object] objects):
+    cdef:
+        Py_ssize_t i, n = len(objects)
+        Py_ssize_t offset, range_size
+        object range_size_obj
+        ndarray[int64_t] counts, keys
+        ndarray[intp_t] present, present_offsets
+        object val
+        int64_t item
+        int64_t min_value = 0
+        int64_t max_value = 0
+        int overflow = 0
+        Py_ssize_t present_count = 0
+
+    if n == 0:
+        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+
+    for i in range(n):
+        val = objects[i]
+
+        if PyLong_CheckExact(val):
+            item = PyLong_AsLongLongAndOverflow(val, &overflow)
+            if overflow != 0:
+                return None
+        else:
+            if checknull(val) or util.is_bool_object(val) or not util.is_integer_object(val):
+                return None
+
+            if val < oINT64_MIN or val > oINT64_MAX:
+                return None
+
+            item = val
+
+        if i == 0:
+            min_value = item
+            max_value = item
+        elif item < min_value:
+            min_value = item
+        elif item > max_value:
+            max_value = item
+
+    range_size_obj = <object>max_value - <object>min_value + 1
+    if range_size_obj > n:
+        return None
+    range_size = <Py_ssize_t>range_size_obj
+
+    counts = np.zeros(range_size, dtype=np.int64)
+    present_offsets = np.empty(range_size, dtype=np.intp)
+
+    for i in range(n):
+        val = objects[i]
+        if PyLong_CheckExact(val):
+            item = PyLong_AsLongLongAndOverflow(val, &overflow)
+        else:
+            item = val
+        offset = item - min_value
+        if counts[offset] == 0:
+            present_offsets[present_count] = offset
+            present_count += 1
+        counts[offset] += 1
+
+    present = present_offsets[:present_count]
+    counts = counts[present].astype(np.int64, copy=False)
+    order = np.argsort(-counts, kind="stable")
+    present = present[order]
+    keys = present.astype(np.int64, copy=False) + min_value
+    counts = counts[order]
+
+    return keys, counts
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def map_infer(
     ndarray arr, object f, *, bint convert=True, bint ignore_na=False
 ) -> "ArrayLike":
@@ -3409,15 +3718,18 @@ cpdef ndarray eq_NA_compat(ndarray[object] arr, object key):
         ndarray[uint8_t, cast=True] result = cnp.PyArray_EMPTY(
             arr.ndim, arr.shape, cnp.NPY_BOOL, 0
         )
-        Py_ssize_t i
-        object item
+        Py_ssize_t i, n = arr.size, stride = arr.strides[0] // sizeof(PyObject*)
+        PyObject **data = <PyObject **>cnp.PyArray_DATA(arr)
+        PyObject *item
+        uint8_t *res = <uint8_t *>cnp.PyArray_DATA(result)
 
-    for i in range(len(arr)):
-        item = arr[i]
-        if item is C_NA:
-            result[i] = False
+    for i in range(n):
+        item = data[i * stride]
+
+        if item == <PyObject *>C_NA:
+            res[i] = 0
         else:
-            result[i] = item == key
+            res[i] = PyObject_RichCompareBool(item, <PyObject *>key, Py_EQ)
 
     return result
 
@@ -3447,6 +3759,112 @@ def dtypes_all_equal(list types not None) -> bool:
         return True
 
 
+def concat_range_indexes(list indexes, object range_index_type):
+    """
+    Fast-path concat planning for RangeIndex.
+
+    Returns a tuple whose first item is a tag interpreted by RangeIndex._concat:
+    0: fallback to the parent implementation
+    1: concatenate index values
+    2: return the single index
+    3: construct RangeIndex(start, stop, step)
+    4: tile the repeated non-empty RangeIndex count times
+    """
+    cdef:
+        Py_ssize_t n = len(indexes)
+        Py_ssize_t i
+        Py_ssize_t rng_len
+        Py_ssize_t non_empty_count = 0
+        object idx
+        object prev = None
+        object rng
+        object last_rng = None
+        object start = None
+        object stop
+        object step = None
+        object next_val = None
+        object rng_start
+        object rng_step
+        bint first = True
+        bint all_same_index = True
+        bint force_values = False
+
+    if n == 0:
+        return (3, 0, 0, 1)
+
+    if n == 1:
+        idx = indexes[0]
+        if not isinstance(idx, range_index_type):
+            return (0, None, None, None)
+        return (2, idx, None, None)
+
+    for i in range(n):
+        if not isinstance(indexes[i], range_index_type):
+            return (0, None, None, None)
+
+    for i in range(n):
+        idx = indexes[i]
+        rng = idx._range
+        rng_len = len(rng)
+
+        if rng_len == 0:
+            continue
+
+        non_empty_count += 1
+        last_rng = rng
+
+        if all_same_index:
+            if prev is not None:
+                all_same_index = prev.equals(idx)
+            else:
+                prev = idx
+
+        rng_start = rng.start
+        rng_step = rng.step
+
+        if force_values:
+            continue
+
+        if first:
+            start = rng_start
+            if rng_len > 1:
+                step = rng_step
+            first = False
+        elif step is None:
+            if rng_start == start:
+                force_values = True
+                continue
+
+            step = rng_start - start
+
+        if step is not None:
+            if rng_len > 1 and rng_step != step:
+                force_values = True
+                continue
+
+            if next_val is not None and rng_start != next_val:
+                force_values = True
+                continue
+
+            next_val = rng[-1] + step
+
+    if non_empty_count == 0:
+        return (3, 0, 0, 1)
+
+    if force_values:
+        if all_same_index:
+            return (4, prev, non_empty_count, None)
+        return (1, None, None, None)
+
+    if next_val is None:
+        stop = last_rng.stop
+        step = last_rng.step
+    else:
+        stop = next_val
+
+    return (3, start, stop, step)
+
+
 def is_np_dtype(object dtype, str kinds=None) -> bool:
     """
     Optimized check for `isinstance(dtype, np.dtype)` with
@@ -3472,3 +3890,33 @@ def is_np_dtype(object dtype, str kinds=None) -> bool:
     if kinds is None:
         return True
     return dtype.kind in kinds
+
+
+def construct_1d_object_array_from_listlike(object values):
+    cdef:
+        Py_ssize_t n, i
+        ndarray[object, ndim=1] arr
+        PyObject **data
+        PyObject *seq
+        PyObject **items
+
+    n = len(values)
+    arr = np.empty(n, dtype=object)
+
+    if n == 0:
+        return arr
+
+    seq = PySequence_Fast(<PyObject *>values, "expected a sequence like")
+    if seq == NULL:
+        raise TypeError("values expected a sequence like")
+
+    items = <PyObject **>PySequence_Fast_ITEMS(seq)
+    data = <PyObject **>arr.data
+
+    for i in range(n):
+        Py_INCREF(items[i])
+        Py_DECREF(data[i])
+        data[i] = items[i]
+
+    Py_DECREF(seq)
+    return arr

@@ -55,68 +55,69 @@ specific mismatch.
 
 ## Candidate commit inventory
 
-The `Decision` column is the current migration disposition. `pending` means the
-optimization remains to be evaluated and ported in its assigned batch.
+The `Decision` column records a terminal migration disposition for every
+candidate: migrated/adapted, already covered by pandas3, superseded/reverted,
+or intentionally omitted with a concrete reason.
 
 | # | Export hash | Subject | Category | Batch | Decision | Source files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `26f530f608` | C 实现swisstable原型 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `asv_bench/benchmarks/swisstable.py`, `_libs/meson.build`, `_libs/swisstable*`, `core/algorithms.py`, `core/config_init.py`, tests |
-| 2 | `3cbe555493` | feat(swisstable): 添加 SwissTable C++17 核心实现 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.hpp` |
-| 3 | `063703e782` | perf(swisstable): 添加批处理优化方法和 resize | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.hpp` |
-| 4 | `55b5cb4acb` | feat(swisstable): 添加类型别名和实例化框架 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `.gitignore`, `_libs/swisstable/swisstable_aliases.hpp`, instances headers |
-| 5 | `0bd2e202c9` | feat(swisstable): 添加 pyx 文件结构和 SwissInt64Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 6 | `bb5778c2b4` | feat(swisstable): 添加 int64 辅助函数 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 7 | `e9a2ff724a` | feat(swisstable): 添加 SwissUInt64Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 8 | `752d2193df` | feat(swisstable): 添加 uint64 辅助函数和 SwissInt32Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 9 | `66103d5ee8` | feat(swisstable): 添加 SwissUInt32Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 10 | `0f92566a5c` | feat(swisstable): 添加 SwissFloat64Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 11 | `4d37bc846c` | feat(swisstable): 添加 SwissFloat32Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 12 | `e7ec6a4d43` | feat(swisstable): 添加 SwissInt16Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 13 | `39b3922be7` | feat(swisstable): 添加 SwissUInt16Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 14 | `cc3c7cf8f8` | feat(swisstable): 添加 SwissInt8Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 15 | `9028ac986d` | feat(swisstable): 添加 SwissUInt8Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 16 | `67c9d4e13b` | feat(swisstable): 添加 SwissComplex64Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
-| 17 | `ad3b462701` | feat(swisstable): 添加 SwissComplex128Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 1 | `26f530f608` | C 实现swisstable原型 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `asv_bench/benchmarks/swisstable.py`, `_libs/meson.build`, `_libs/swisstable*`, `core/algorithms.py`, `core/config_init.py`, tests |
+| 2 | `3cbe555493` | feat(swisstable): 添加 SwissTable C++17 核心实现 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.hpp` |
+| 3 | `063703e782` | perf(swisstable): 添加批处理优化方法和 resize | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.hpp` |
+| 4 | `55b5cb4acb` | feat(swisstable): 添加类型别名和实例化框架 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `.gitignore`, `_libs/swisstable/swisstable_aliases.hpp`, instances headers |
+| 5 | `0bd2e202c9` | feat(swisstable): 添加 pyx 文件结构和 SwissInt64Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 6 | `bb5778c2b4` | feat(swisstable): 添加 int64 辅助函数 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 7 | `e9a2ff724a` | feat(swisstable): 添加 SwissUInt64Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 8 | `752d2193df` | feat(swisstable): 添加 uint64 辅助函数和 SwissInt32Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 9 | `66103d5ee8` | feat(swisstable): 添加 SwissUInt32Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 10 | `0f92566a5c` | feat(swisstable): 添加 SwissFloat64Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 11 | `4d37bc846c` | feat(swisstable): 添加 SwissFloat32Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 12 | `e7ec6a4d43` | feat(swisstable): 添加 SwissInt16Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 13 | `39b3922be7` | feat(swisstable): 添加 SwissUInt16Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 14 | `cc3c7cf8f8` | feat(swisstable): 添加 SwissInt8Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 15 | `9028ac986d` | feat(swisstable): 添加 SwissUInt8Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 16 | `67c9d4e13b` | feat(swisstable): 添加 SwissComplex64Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
+| 17 | `ad3b462701` | feat(swisstable): 添加 SwissComplex128Map 类 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
 | 18 | `0744c0555f` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
-| 19 | `1e811cf41e` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
-| 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | intentionally not migrated: this reverts row 19, and its index change is superseded by rows 18/21 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
+| 19 | `1e811cf41e` | optimize take_1d | algorithms | B1-existing-audit | no direct migration: already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
+| 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | no direct migration: this reverts row 19, and its index change is superseded by rows 18/21 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
 | 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
-| 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
+| 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | no direct migration: already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
 | 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | migrated in roll_sum batch | `_libs/window/aggregations.pyx` |
 | 24 | `2777612697` | kh put likely | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
-| 25 | `598e709a9b` | group_cummin_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 26 | `e38ed47c0e` | group_all_any 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 27 | `d019bc4d8e` | group_cumprod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 28 | `63b8520f8c` | group_shift_indexer性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 29 | `171fe464a6` | take_xxx 消减引用计数增减 | algorithms | B1-existing-audit | audit covered by `28df2030b5` | `_libs/algos.pyx`, `_libs/algos_take_helper.pxi.in` |
+| 25 | `598e709a9b` | group_cummin_max性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 26 | `e38ed47c0e` | group_all_any 性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 27 | `d019bc4d8e` | group_cumprod性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 28 | `63b8520f8c` | group_shift_indexer性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 29 | `171fe464a6` | take_xxx 消减引用计数增减 | algorithms | B1-existing-audit | migrated by target commit `28df2030b5` | `_libs/algos.pyx`, `_libs/algos_take_helper.pxi.in` |
 | 30 | `9e640a5d2c` | add_overflowsafe: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx` |
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
-| 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | not migrated: reverted by `0b958ce8fd` after MergeJoin failure | `_libs/algos.pyx` |
+| 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | no direct migration: reverted by row 65 after a MergeJoin failure | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
 | 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | migrated: typed left/right hooks and DatetimeEngine call site use the Cython binary search | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
-| 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
+| 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
 | 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | migrated in skiplist header batch | `_libs/include/pandas/skiplist.h` |
-| 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 38 | `c60600ce36` | group_min_max性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
-| 39 | `829e42a602` | group_prod性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
+| 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 38 | `c60600ce36` | group_min_max性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
+| 39 | `829e42a602` | group_prod性能优化 | groupby | B1-existing-audit | migrated by target commit `f39ba34d1d` | `_libs/groupby.pyx` |
 | 40 | `4c4a5096dc` | 优化 kth_smallest_c 算法性能，使用指针操作替代数组索引，减少内存访问开销 | algorithms | B6-algorithms | migrated in algos Cython batch | `_libs/algos.pyx` |
-| 41 | `12c293f745` | 默认启用swisstable | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `core/config_init.py` |
-| 42 | `8c1c10d14f` | swisstable 同步蓝区代码 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashing/hashtable/swisstable files |
-| 43 | `7d2d23951e` | fix debug build | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable.pxd` |
-| 44 | `4423bd227e` | factorize: fix int na_value bug | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable_class_helper.pxi.in` |
-| 45 | `72efd58130` | fix object engine performance in _get_loc_duplicates | index | B2-index-join | already covered in pandas3: `ObjectEngine._get_loc_duplicates` uses `_bin_search/_bin_search_right` | `_libs/index.pyx` |
-| 46 | `a985978612` | fix stride case in swisstable | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable.pyx`, `_libs/swisstable_class_helper.pxi.in` |
+| 41 | `12c293f745` | 默认启用swisstable | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `core/config_init.py` |
+| 42 | `8c1c10d14f` | swisstable 同步蓝区代码 | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | hashing/hashtable/swisstable files |
+| 43 | `7d2d23951e` | fix debug build | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable.pxd` |
+| 44 | `4423bd227e` | factorize: fix int na_value bug | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable_class_helper.pxi.in` |
+| 45 | `72efd58130` | fix object engine performance in _get_loc_duplicates | index | B2-index-join | no direct migration: pandas3 already uses `_bin_search/_bin_search_right` | `_libs/index.pyx` |
+| 46 | `a985978612` | fix stride case in swisstable | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable.pyx`, `_libs/swisstable_class_helper.pxi.in` |
 | 47 | `a3739ab1e4` | 添加携程 benchmark | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 48 | `42b376312f` | add dataframe construction bench for xiecheng | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 49 | `baca9d6de2` | fix xiecheng StringCategorical time_to_categorical | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 50 | `403df2a143` | join: 优化 groupsort_indexer 和 take | join | B2-index-join | migrated where applicable: `groupsort_indexer` unroll retained; join take helper is obsolete after row 57 writes `sort=False` output directly | `_libs/algos.pyx`, `_libs/join.pyx` |
-| 51 | `56996122c8` | add swisstable Factorizer implementation | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashtable/swisstable/merge files |
-| 52 | `120b7a79a1` | Fix benchmark script arguments and test script build process | script | B1-existing-audit | do not migrate; reverted by `6c0d804544` | `scripts/benchmark_swiss_prefetch.py`, `scripts/test_prefetch_server.sh` |
-| 53 | `6c0d804544` | Revert "Fix benchmark script arguments and test script build process" | script | B1-existing-audit | do not migrate; revert marker only | deletes the scripts from row 52 |
-| 54 | `108a06f167` | swisstable get labels batch | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable*` |
+| 51 | `56996122c8` | add swisstable Factorizer implementation | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | hashtable/swisstable/merge files |
+| 52 | `120b7a79a1` | Fix benchmark script arguments and test script build process | script | B1-existing-audit | no direct migration: canceled by row 53 | `scripts/benchmark_swiss_prefetch.py`, `scripts/test_prefetch_server.sh` |
+| 53 | `6c0d804544` | Revert "Fix benchmark script arguments and test script build process" | script | B1-existing-audit | no direct migration: revert marker for row 52 | deletes the scripts from row 52 |
+| 54 | `108a06f167` | swisstable get labels batch | swisstable | B1-existing-audit | migrated by target commit `f6d861f8a6` | `_libs/swisstable*` |
 | 55 | `e951e5f721` | 优化 ints_to_pydatetime | tslibs | B5-tslibs | migrated in vectorized/fields tslibs batch | `_libs/tslibs/vectorized.pyx` |
-| 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | already covered in pandas3 current `fields.pyx` | `_libs/tslibs/fields.pyx` |
-| 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | already covered in pandas3 current `inner_join`/`left_outer_join` sort=False branches | `_libs/join.pyx` |
+| 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | no direct migration: already covered in pandas3 `fields.pyx` | `_libs/tslibs/fields.pyx` |
+| 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | no direct migration: already covered by pandas3 `inner_join`/`left_outer_join` | `_libs/join.pyx` |
 | 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | migrated with pandas3-safe mask/skipna loop specialization while retaining Kahan, overflow, object, and min_count semantics | `_libs/groupby.pyx` |
 | 59 | `fcdd01e0a4` | update xiecheng bench | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 60 | `1246018d48` | 性能优化：优化 apply、astype、fillna、take 和 value_counts 核心执行路径 | python-layer | B8-python-layer | migrated in B8a-B8h: apply, astype, dict/Arrow fillna, value_counts, putmask, and take paths are adapted to pandas3 | `lib.pyx/.pyi`, `core/algorithms.py`, apply/putmask/take/arrow/generic/internals/series/tests |
@@ -124,7 +125,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 62 | `31a63abb20` | perf: use stable sort for all argsort calls in factorize | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 63 | `1c4c300a36` | perf: Add sort kind in safe_sort | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
 | 64 | `7d7fb8bf02` | PERF: optimize row-wise apply string access and label overhead | python-layer | B8-python-layer | migrated in row-wise apply cache batch | `core/apply.py`, `core/internals/managers.py`, `core/series.py`, tests |
-| 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | audit recorded: pandas3 already keeps upstream behavior | `_libs/algos.pyx` |
+| 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | no direct migration: pandas3 already retains the restored upstream behavior | `_libs/algos.pyx` |
 | 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |
 | 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | migrated with max/min and mask/skipna loop specialization plus a separate NA-poison state that fixes the exported sentinel ambiguity | `_libs/groupby.pyx` |
@@ -132,23 +133,39 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
-| 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | no direct port: pandas3 target uses an O(n) `kth_smallest_c` quickselect path, stronger than the exported O(n log n) argsort/pointer rewrite | `_libs/groupby.pyx` |
+| 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | no direct migration: pandas3 uses a stronger O(n) `kth_smallest_c` quickselect path | `_libs/groupby.pyx` |
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | migrated in dense get_dummies batch | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
-| 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | not directly migrated: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |
-| 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_2d_inplace` | `_libs/algos.pyx` |
+| 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | no direct migration: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |
+| 77 | `706991b28f` | PERF: 2D no-limit pad fast path | algorithms | B6-algorithms | no direct migration: already covered by pandas3 `pad_2d_inplace` | `_libs/algos.pyx` |
 | 78 | `d72753640f` | PERF: flat list/tuple object-array construction fast path | lib/cast | B3-lib-object | migrated in object construction batch | `core/dtypes/cast.py`, tests |
 | 79 | `3f77b3b691` | PERF: add_overflowsafe left-contiguous/right-scalar paths | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx` |
 | 80 | `0e2677777a` | PERF: checknull uses C `isnan()` | algorithms | B6-algorithms | migrated with pandas3 signature adaptation | `_libs/missing.pyx`, tests |
 | 81 | `42c76d772f` | PERF: `_shift_bdays` avoids full date rebuild where possible | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 82 | `82081460b3` | PERF: add_overflowsafe scalar/contiguous cached flags | tslibs | B5-tslibs | migrated in add_overflowsafe batch | `_libs/tslibs/np_datetime.pyx`, tests |
 | 83 | `d1f4ed4720` | PERF: SemiMonthBegin/SemiMonthEnd narrow date rebuild | tslibs | B5-tslibs | migrated relevant SemiMonth changes; intentionally rejected the unrelated cast.py rollback that would undo row 78 and delete its tests | `ccalendar.pyx`, `offsets.pyx`, tests |
-| 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
-| 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | already covered in pandas3 current `pad_inplace` | `_libs/algos.pyx` |
-| 86 | `844af97539` | PERF: maybe_convert_objects homogeneous-block fast path | lib | B1-existing-audit | audit covered by `8e0304f403` | `_libs/lib.pyx`, tests |
-| 87 | `aae84a43d5` | PERF: avoid redundant Python-to-C complex conversion | lib | B1-existing-audit | audit covered by `8e0304f403` | `_libs/lib.pyx` |
-| 88 | `eba6d76f8c` | PERF: nancorr high-validity mask fast path | algorithms | B1-existing-audit | audit covered by `d978bd13ee` | `_libs/algos.pyx` |
-| 89 | `2e964bd967` | PERF: take_2d_axis1 broader contiguous fast path | algorithms | B1-existing-audit | audit covered by `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
+| 84 | `38f97b58aa` | PERF: add pad_inplace no-limit fast path | algorithms | B6-algorithms | no direct migration: already covered by pandas3 `pad_inplace` | `_libs/algos.pyx` |
+| 85 | `6fd0359851` | PERF: add pad_inplace loop unroll | algorithms | B6-algorithms | no direct migration: already covered by pandas3 `pad_inplace` | `_libs/algos.pyx` |
+| 86 | `844af97539` | PERF: maybe_convert_objects homogeneous-block fast path | lib | B1-existing-audit | migrated by target commit `8e0304f403` | `_libs/lib.pyx`, tests |
+| 87 | `aae84a43d5` | PERF: avoid redundant Python-to-C complex conversion | lib | B1-existing-audit | migrated by target commit `8e0304f403` | `_libs/lib.pyx` |
+| 88 | `eba6d76f8c` | PERF: nancorr high-validity mask fast path | algorithms | B1-existing-audit | migrated by target commit `d978bd13ee` | `_libs/algos.pyx` |
+| 89 | `2e964bd967` | PERF: take_2d_axis1 broader contiguous fast path | algorithms | B1-existing-audit | migrated by target commit `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
+
+## Terminal audit summary
+
+- Candidate commits: 89.
+- Migrated or pandas3-adapted: 74. This includes optimizations already landed
+  in target migration commits before this audit.
+- No direct code migration required: 15.
+  - Already present, structurally replaced, or superseded by a stronger pandas3
+    implementation: rows 19, 22, 45, 56, 57, 73, 76, 77, 84, and 85.
+  - Reverted or superseded in the source history: rows 20, 32, and 65.
+  - Temporary benchmark-script change and its matching revert: rows 52 and 53.
+- Partially resolved candidates: 0.
+- Blocked candidates: 0.
+- Row 83 counts as migrated because all SemiMonth changes were adapted; its
+  unrelated `cast.py` rollback was classified as a replay side effect that
+  would otherwise undo row 78.
 
 ## Known export/replay differences
 

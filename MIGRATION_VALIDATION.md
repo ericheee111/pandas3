@@ -6,7 +6,7 @@ future run records exact commands and output.
 
 ## Batch 0/1: inventory and existing migration audit
 
-Status: in progress; documentation-only changes.
+Status: completed.
 
 ### Commands executed
 
@@ -32,14 +32,14 @@ Status: in progress; documentation-only changes.
     require later export/fixup comparison before use as evidence.
 - This repo has an unrelated uncommitted `AGENTS.md` change. It is intentionally
   excluded from migration commits.
-- Existing target commits already cover the first audit set:
+- Existing target commits cover the first audit set:
   - `d978bd13ee` covers `eba6d76f8c`.
   - `28df2030b5` covers `2e964bd967` and `171fe464a6`; it documents
     `1e811cf41e`/`33da51b84c` as already present and skips `02d2113331`.
   - `f6d861f8a6` covers SwissTable implementation and integration.
   - `8e0304f403` covers `844af97539` and `aae84a43d5`.
-  - `f39ba34d1d` covers the main groupby loop optimizations and intentionally
-    does not migrate `a041e1e5b3` `group_sum`.
+  - `f39ba34d1d` covers the initial groupby loop set; `a041e1e5b3`
+    `group_sum` was completed later in Batch 1b.
   - `ee85531203` is target-only corrective work for duplicated algorithm
     migration.
 
@@ -251,8 +251,8 @@ Status: implemented.
 
 - Applied only inside the vendored khash macro used by pandas hashtable code.
 - Kept the macro fallback portable for non-GNU/non-Clang compilers.
-- Did not include skiplist allocator/prefetch changes or `roll_sum`; those are
-  larger and remain separate pending B7 items.
+- Skiplist allocation and `roll_sum` were completed in subsequent B7
+  sub-batches.
 
 ### Checks executed
 
@@ -316,7 +316,7 @@ Status: implemented.
 
 ## Batch 6b: algos Cython scalar and fill hot paths
 
-Status: partially implemented; partially already covered by pandas3.
+Status: completed; two changes were ported and three were already present.
 
 ### Source commits covered
 
@@ -547,7 +547,7 @@ Status: implemented.
 
 ## Batch 2c: is_monotonic rollback audit
 
-Status: not migrated by design.
+Status: closed; the failed optimization remains reverted.
 
 ### Source commits covered
 
@@ -820,7 +820,7 @@ Status: implemented.
 
 ## Batch 5b: datetime object construction and date-name audit
 
-Status: partially implemented; one source commit already covered.
+Status: completed; one change was ported and one was already present.
 
 ### Source commits covered
 
@@ -971,8 +971,8 @@ Status: implemented.
 - `7d7fb8bf02` / reconstructed `c8634f7`: optimize row-wise
   `DataFrame.apply(axis=1)` string label access and reused-Series reference
   handling.
-- `1246018d48` / reconstructed `391ce67`: partially covered only for the
-  row-wise apply cache infrastructure that row `7d7fb8bf02` depends on.
+- `1246018d48` / reconstructed `391ce67`: covers the row-wise apply cache
+  infrastructure that row `7d7fb8bf02` depends on.
 
 ### pandas3 adaptation notes
 
@@ -987,9 +987,8 @@ Status: implemented.
 - Removed the per-row `BlockPlacement` rebuild from
   `SingleBlockManager.set_values`, matching the export intent while preserving
   the existing manager locations for the reused row object.
-- Did not migrate the rest of `1246018d48` in this batch. Its astype, fillna,
-  take, value_counts, Arrow, putmask, and generic-manager changes remain broad
-  and require separate pandas3 semantic review.
+- The remaining `1246018d48` subsets were completed independently in
+  Batches 8b-8h.
 
 ### Checks executed
 
@@ -1024,8 +1023,8 @@ Status: implemented.
 
 ### Source commits covered
 
-- `1246018d48` / reconstructed `391ce67`: partially covered for the
-  object-dtype integer `value_counts(dropna=False)` dense sorted fast path.
+- `1246018d48` / reconstructed `391ce67`: covers the object-dtype integer
+  `value_counts(dropna=False)` dense sorted fast path.
 
 ### pandas3 adaptation notes
 
@@ -1077,7 +1076,7 @@ Status: implemented.
 
 ### Source commits covered
 
-- `1246018d48` / reconstructed `391ce67`: partially covered for
+- `1246018d48` / reconstructed `391ce67`: covers
   `putmask_without_repeat` scalar assignment and 2-D bool-to-object
   `take_nd` with NaN fill.
 
@@ -1124,8 +1123,8 @@ Status: implemented.
 
 ### Source commits covered
 
-- `1246018d48` / reconstructed `391ce67`: partially covered for
-  single-chunk integer ArrowExtensionArray scalar `fillna`.
+- `1246018d48` / reconstructed `391ce67`: covers single-chunk integer
+  ArrowExtensionArray scalar `fillna`.
 
 ### pandas3 adaptation notes
 
@@ -1170,8 +1169,8 @@ Status: implemented.
 
 ### Source commits covered
 
-- `1246018d48` / reconstructed `391ce67`: partially covered for large
-  nullable integer `value_counts` dense counting.
+- `1246018d48` / reconstructed `391ce67`: covers large nullable integer
+  `value_counts` dense counting.
 
 ### pandas3 adaptation notes
 
@@ -1216,8 +1215,8 @@ Status: implemented.
 
 ### Source commits covered
 
-- `1246018d48` / reconstructed `391ce67`: partially covered for
-  `FrameRowApply` single-block Series reuse and same-index Series result
+- `1246018d48` / reconstructed `391ce67`: covers `FrameRowApply`
+  single-block Series reuse and same-index Series result
   construction.
 
 ### pandas3 adaptation notes
@@ -1355,3 +1354,88 @@ Status: implemented.
   - `python -m pytest pandas/tests/frame/methods/test_fillna.py -k "dict_object or nonunique"`
   - `python -m pytest pandas/tests/frame/methods/test_fillna.py`
 - Run `asv continuous` for `frame_methods.Fillna`.
+
+## Final completion audit
+
+Status: all 89 candidate commits have a terminal disposition.
+
+### Disposition counts
+
+- Migrated or pandas3-adapted: 74.
+- No direct code migration required: 15.
+  - Existing/stronger/structurally replaced pandas3 implementation:
+    rows 19, 22, 45, 56, 57, 73, 76, 77, 84, and 85.
+  - Source-side revert or superseded step: rows 20, 32, and 65.
+  - Temporary benchmark script plus its revert: rows 52 and 53.
+- Partially resolved: 0.
+- Blocked: 0.
+
+The count was checked by parsing the 89 Markdown table rows in
+`MIGRATION_PLAN.md`; every no-direct row uses the `no direct migration:`
+prefix, making the 74/15 split mechanically reproducible.
+
+### Target commits created before this final audit commit
+
+- `2bfbc167cb` DOC: add pandas2 optimization migration inventory
+- `2f489b472c` PERF: port index search primitives from pandas2
+- `79ba386d4a` PERF: port RangeIndex concat planning helper
+- `e23914d92f` PERF: port khash put micro-optimizations
+- `dded84d01c` PERF: port stable sort controls for safe_sort
+- `28f873ba8e` PERF: port algos Cython scalar hot paths
+- `0672469c2a` PERF: port object array construction helpers
+- `5efbbfabd2` PERF: port lib object pointer helpers
+- `b545a39fc2` PERF: port dense get_dummies writer
+- `e7b5a3234a` PERF: port rolling sum loop optimization
+- `f001d1bdb8` DOC: record is_monotonic rollback decision
+- `4c339e66c5` DOC: record ObjectEngine lookup coverage
+- `6e766c4650` PERF: port object join indexer optimizations
+- `8ece4c5407` PERF: port skiplist allocation optimizations
+- `473b0e68ff` PERF: add Xiecheng ASV benchmarks
+- `e48041d9cc` PERF: port add_overflowsafe fast paths
+- `766dc263de` PERF: port datetime object construction fast path
+- `4d00dfadf4` PERF: port offsets shift fast paths
+- `de87482916` PERF: port SemiMonth offset fast paths
+- `f4f5eeb92c` PERF: port row-wise apply label cache
+- `01e840cd05` PERF: port object integer value_counts fast path
+- `999c26f3c5` PERF: port putmask and bool take fast paths
+- `9ea1009920` PERF: port Arrow integer fillna fast path
+- `d108e65555` PERF: port nullable integer value_counts fast path
+- `8afaf5bca6` PERF: port FrameRowApply reuse fast path
+- `429781002a` DOC: record pandas3 astype fillna migration audit
+- `77aa7184b3` PERF: complete index search migration
+- `4d716d4cec` PERF: port remaining groupby loop optimizations
+- `fb67599b4d` PERF: port homogeneous DataFrame astype paths
+- `8d730e0d0f` PERF: port object DataFrame dict fillna path
+
+### Unverified high-risk areas
+
+- Cython was unavailable, so the final `group_sum`,
+  `group_idxmin_idxmax`, index search, join, datetime, reshape, and rolling
+  sources have not been rebuilt in this environment.
+- NumPy was unavailable, so the newly added runtime tests have not executed.
+- PyArrow-specific fillna and astype paths require a PyArrow-enabled test
+  environment.
+- SwissTable requires a full C++17 build and its dedicated tests.
+- Performance claims require ASV; no ASV result is recorded here.
+
+### Recommended validation order
+
+1. Build all pandas3 Cython/C/C++ extensions with the repository-supported
+   Meson environment.
+2. Run focused low-level tests:
+   `python -m pytest pandas/tests/indexes pandas/tests/reshape/merge
+   pandas/tests/groupby pandas/tests/window pandas/tests/tslibs
+   pandas/tests/tseries/offsets`.
+3. Run focused Python-layer tests:
+   `python -m pytest pandas/tests/apply/test_frame_apply.py
+   pandas/tests/frame/methods/test_astype.py
+   pandas/tests/frame/methods/test_fillna.py
+   pandas/tests/base/test_value_counts.py
+   pandas/tests/arrays/integer/test_function.py
+   pandas/tests/array_algos/test_putmask.py pandas/tests/test_take.py
+   pandas/tests/extension/test_arrow.py`.
+4. Run SwissTable tests and the broader pandas test suite.
+5. Run `asv continuous v3.0.3 HEAD` for `frame_methods.AsType`,
+   `frame_methods.Fillna`, GroupBy sum/idxmin/idxmax, indexing engines,
+   join/group-sort consumers, datetime offsets, rolling, get_dummies,
+   SwissTable, and Xiecheng benchmarks.

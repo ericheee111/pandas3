@@ -117,7 +117,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 55 | `e951e5f721` | 优化 ints_to_pydatetime | tslibs | B5-tslibs | migrated in vectorized/fields tslibs batch | `_libs/tslibs/vectorized.pyx` |
 | 56 | `a22b61a327` | 优化 get_date_name_field | tslibs | B5-tslibs | already covered in pandas3 current `fields.pyx` | `_libs/tslibs/fields.pyx` |
 | 57 | `07ccc6e28e` | faster many:many join with sort=False | join | B2-index-join | already covered in pandas3 current `inner_join`/`left_outer_join` sort=False branches | `_libs/join.pyx` |
-| 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | intentionally not migrated by `f39ba34d1d` pending only if later evidence justifies | `_libs/groupby.pyx` |
+| 58 | `a041e1e5b3` | group_sum优化 | groupby | B1-existing-audit | migrated with pandas3-safe mask/skipna loop specialization while retaining Kahan, overflow, object, and min_count semantics | `_libs/groupby.pyx` |
 | 59 | `fcdd01e0a4` | update xiecheng bench | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 60 | `1246018d48` | 性能优化：优化 apply、astype、fillna、take 和 value_counts 核心执行路径 | python-layer | B8-python-layer | partially migrated: axis apply reuse/cache, object-int64 and nullable-int dense value_counts, putmask scalar, bool->object take, and Arrow integer fillna subsets; DataFrame astype/fillna pieces not migrated in this pass because they depend on pandas2 copy/CoW and BlockManager warning paths that diverge in pandas3 | `lib.pyx/.pyi`, `core/algorithms.py`, apply/putmask/take/arrow/generic/internals/series/tests |
 | 61 | `51a2b98159` | perf: Use stable sort in safe_sort for better ARM performance | algorithms | B6-algorithms | migrated in stable-sort batch | `core/algorithms.py` |
@@ -127,7 +127,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 65 | `0b958ce8fd` | is_monotonic 携程 MergeJoin用例失败 退回开源版本 | join/index | B2-index-join | audit recorded: pandas3 already keeps upstream behavior | `_libs/algos.pyx` |
 | 66 | `c064f8cd15` | eq_NA_compat 优化： 避免引用增减 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 67 | `defb42e92e` | fix array_equivalent_object build | lib | B3-lib-object | migrated with array_equivalent_object pointer casts | `_libs/lib.pyx` |
-| 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` if included; otherwise reassess in groupby follow-up | `_libs/groupby.pyx` |
+| 68 | `286eba1dc7` | groupby_idmin_max 优化 | groupby | B1-existing-audit | migrated with max/min and mask/skipna loop specialization plus a separate NA-poison state that fixes the exported sentinel ambiguity | `_libs/groupby.pyx` |
 | 69 | `52f9c792ec` | join indexer: object optimize | join | B2-index-join | migrated in object join indexer batch | `_libs/join.pyx` |
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |

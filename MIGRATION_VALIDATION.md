@@ -62,6 +62,60 @@ Status: in progress; documentation-only changes.
   source export plus adjacent pandas3 tests.
 - Record ASV benchmark names, even when ASV is not executed.
 
+## Batch 1b: remaining groupby hot loops
+
+Status: implemented with pandas3 semantic corrections.
+
+### Source commits covered
+
+- `a041e1e5b3` / reconstructed `6738120`: `group_sum` hot-loop
+  specialization.
+- `286eba1dc7` / reconstructed `df61a0f`: `group_idxmin_idxmax` hot-loop
+  specialization.
+- `09c956697b` / reconstructed `4930c8c`: reviewed and not copied because the
+  target already uses `kth_smallest_c` quickselect instead of the export's
+  full argsort.
+
+### pandas3 adaptation notes
+
+- Hoisted `uses_mask` and `skipna` dispatch out of the `group_sum` row/column
+  loops while retaining pandas3's existing Kahan compensation, float/complex
+  overflow repair, object first-value handling, datetime NaT behavior, and
+  `_check_below_mincount` post-processing.
+- Did not copy the export's 500-line per-fused-type `group_sum` body: its object
+  branch is explicitly unfinished and would skip object aggregation.
+- Hoisted `idxmin`/`idxmax`, mask, and skipna dispatch out of the
+  `group_idxmin_idxmax` hot loop.
+- Kept `out == -1` as pandas3's no-result sentinel and introduced a separate
+  `poisoned` bitmap for `skipna=False`. The exported `out[:] = 0` workaround
+  conflates a real row-zero result with an empty group.
+- Added a regression test for `idxmin`/`idxmax(skipna=False)` with no missing
+  values, where the result must not be treated as already poisoned.
+
+### Checks executed
+
+- Compared the export patch with reconstructed commits `6738120`, `df61a0f`,
+  and `4930c8c`.
+- Reviewed the pandas3 `_call_cython_op` result allocation and idxmin/idxmax
+  post-processing contract.
+- `python -m py_compile pandas/tests/groupby/test_reductions.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Cython compile: active Python reports `No module named cython`.
+- Runtime pytest: the active environment cannot import the unbuilt pandas3
+  Cython extensions and lacks NumPy.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- Build pandas3 with Meson/Cython, then run:
+  - `python -m pytest pandas/tests/groupby/test_reductions.py -k "idxmin or idxmax"`
+  - `python -m pytest pandas/tests/groupby -k "sum and skipna"`
+- Run the GroupBy ASV matrix in `asv_bench/benchmarks/groupby.py`, especially
+  `sum`, `idxmin`, and `idxmax` over masked/unmasked numeric and object data.
+
 ## Pending ASV benchmark mapping
 
 - `stat_ops.Correlation.*` for nancorr.

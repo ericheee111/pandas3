@@ -912,7 +912,7 @@ Status: implemented.
 
 ## Batch 5d: SemiMonth narrow date rebuild
 
-Status: partially implemented.
+Status: implemented for the commit's SemiMonth optimization.
 
 ### Source commits covered
 
@@ -933,6 +933,9 @@ Status: partially implemented.
 - Did not migrate the export commit's `pandas/core/dtypes/cast.py` rollback or
   deleted tests because those conflict with the already-migrated
   `construct_1d_object_array_from_listlike` helper and would remove coverage.
+- The rollback is unrelated to the SemiMonth subject and reverses the explicit
+  flat list/tuple optimization from `d72753640f`; it is therefore classified as
+  an export/replay side effect, not an outstanding migration item.
 
 ### Checks executed
 
@@ -1305,3 +1308,50 @@ Status: implemented.
   - `python -m pytest pandas/tests/frame/methods/test_astype.py -k homogeneous`
   - `python -m pytest pandas/tests/frame/methods/test_astype.py`
 - Run `asv continuous` for `frame_methods.AsType`.
+
+## Batch 8h: object-block dict DataFrame fillna
+
+Status: implemented.
+
+### Source commits covered
+
+- `1246018d48` / reconstructed `391ce67`: single-object-block DataFrame
+  `fillna` with dict/Series scalar values.
+
+### pandas3 adaptation notes
+
+- Added a Block-level path that computes the selected-column NA mask once,
+  applies per-column scalar fills in one broadcast operation, and preserves
+  per-column `limit` behavior.
+- Added a BlockManager dispatcher restricted to one complete object
+  `NumpyBlock`; unsupported mappings, non-scalar values, split blocks, duplicate
+  columns, and MultiIndex columns retain the existing fallback.
+- Replaced pandas2's optional CoW flags and `_AlreadyWarned` flow with pandas3's
+  always-on `_get_refs_and_copy` contract. Inplace operations mutate only when
+  the block has no external references; otherwise they copy before assignment.
+- Existing ASV `frame_methods.Fillna` already covers dict fills on wide object
+  DataFrames for both inplace modes.
+
+### Checks executed
+
+- Compared the export patch and reconstructed `391ce67` implementation with
+  pandas3 `Block.fillna`, `BlockManager.apply`, and `NDFrame.fillna`.
+- Added tests for direct-path dispatch, `limit`, inplace return behavior, and
+  Copy-on-Write isolation.
+- `python -m py_compile pandas/core/generic.py
+  pandas/core/internals/blocks.py pandas/core/internals/managers.py
+  pandas/tests/frame/methods/test_fillna.py`
+- `git diff --check`
+
+### Checks not executed
+
+- Runtime pytest: the active environment lacks NumPy and cannot import the
+  target pandas build.
+- ASV: not run in this environment.
+
+### Follow-up validation
+
+- After building pandas3, run:
+  - `python -m pytest pandas/tests/frame/methods/test_fillna.py -k "dict_object or nonunique"`
+  - `python -m pytest pandas/tests/frame/methods/test_fillna.py`
+- Run `asv continuous` for `frame_methods.Fillna`.

@@ -79,7 +79,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 17 | `ad3b462701` | feat(swisstable): 添加 SwissComplex128Map 类 | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | `_libs/swisstable/swisstable.pyx` |
 | 18 | `0744c0555f` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 19 | `1e811cf41e` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
-| 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | skipped as backward step per `28df2030b5`; recheck index part in B2 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
+| 20 | `02d2113331` | optimize take_1d | index/algorithms | B1-existing-audit | intentionally not migrated: this reverts row 19, and its index change is superseded by rows 18/21 | `_libs/algos_take_helper.pxi.in`, `_libs/index.pyx` |
 | 21 | `df0c75b9fd` | optimize BaseMultiIndexCodesEngine init | index | B2-index-join | migrated in `index/search primitives` sub-batch | `_libs/index.pyx` |
 | 22 | `33da51b84c` | optimize take_1d | algorithms | B1-existing-audit | already in pandas3 per `28df2030b5` | `_libs/algos_take_helper.pxi.in` |
 | 23 | `66863407cc` | roll_sum 是 rolling 窗口求和的高频路径，核心操作模式为： | low-level/window | B7-low-level-window | migrated in roll_sum batch | `_libs/window/aggregations.pyx` |
@@ -93,7 +93,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 31 | `a60133b265` | array_equivalent_object: 连续场景直接使用裸指针访问替代原本的PyArray_MultiIter迭代器 | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
 | 32 | `eaaffa04b4` | is_monotonic优化 | index | B2-index-join | not migrated: reverted by `0b958ce8fd` after MergeJoin failure | `_libs/algos.pyx` |
 | 33 | `fefbc7b5a4` | cython construct_1d_object_array_from_listlike impl | lib | B3-lib-object | migrated in object construction batch | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/dtypes/cast.py` |
-| 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | partially migrated: typed searchsorted hooks; DatetimeEngine call-site audit remains | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
+| 34 | `53b373262d` | cython _searchsorted_left impl | index | B2-index-join | migrated: typed left/right hooks and DatetimeEngine call site use the Cython binary search | `_libs/index.pyx`, `_libs/index_class_helper.pxi.in` |
 | 35 | `82d3f0d7c5` | group_lastx性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
 | 36 | `91019df988` | skiplist优化 | low-level/window | B7-low-level-window | migrated in skiplist header batch | `_libs/include/pandas/skiplist.h` |
 | 37 | `eaa0ec8472` | group_mean 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` | `_libs/groupby.pyx` |
@@ -109,7 +109,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 47 | `a3739ab1e4` | 添加携程 benchmark | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 48 | `42b376312f` | add dataframe construction bench for xiecheng | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
 | 49 | `baca9d6de2` | fix xiecheng StringCategorical time_to_categorical | benchmarks | B9-benchmarks | migrated in xiecheng benchmark batch | `asv_bench/benchmarks/xiecheng.py` |
-| 50 | `403df2a143` | join: 优化 groupsort_indexer 和 take | join | B2-index-join | partially migrated: `groupsort_indexer` unroll only; join take helper remains | `_libs/algos.pyx`, `_libs/join.pyx` |
+| 50 | `403df2a143` | join: 优化 groupsort_indexer 和 take | join | B2-index-join | migrated where applicable: `groupsort_indexer` unroll retained; join take helper is obsolete after row 57 writes `sort=False` output directly | `_libs/algos.pyx`, `_libs/join.pyx` |
 | 51 | `56996122c8` | add swisstable Factorizer implementation | swisstable | B1-existing-audit | audit covered by `f6d861f8a6` | hashtable/swisstable/merge files |
 | 52 | `120b7a79a1` | Fix benchmark script arguments and test script build process | script | B1-existing-audit | do not migrate; reverted by `6c0d804544` | `scripts/benchmark_swiss_prefetch.py`, `scripts/test_prefetch_server.sh` |
 | 53 | `6c0d804544` | Revert "Fix benchmark script arguments and test script build process" | script | B1-existing-audit | do not migrate; revert marker only | deletes the scripts from row 52 |
@@ -132,7 +132,7 @@ optimization remains to be evaluated and ported in its assigned batch.
 | 70 | `1b285b9697` | range _concat impl in lib.pyx | index/lib | B2-index-join | migrated with pandas3 fallback and repeated-range semantics preserved | `_libs/lib.pyx`, `_libs/lib.pyi`, `core/indexes/range.py` |
 | 71 | `42dc387d2c` | khash 局部缓存 keys/flags 指针 | low-level/window | B7-low-level-window | migrated in khash micro-optimization sub-batch | `_libs/include/pandas/vendored/klib/khash.h` |
 | 72 | `454f5e27f1` | optimize fast_zip | lib | B3-lib-object | migrated in lib pointer-helper batch | `_libs/lib.pyx` |
-| 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | audit covered by `f39ba34d1d` only if diff confirms; otherwise reassess after B1 | `_libs/groupby.pyx` |
+| 73 | `09c956697b` | quantile 性能优化 | groupby | B1-existing-audit | no direct port: pandas3 target uses an O(n) `kth_smallest_c` quickselect path, stronger than the exported O(n log n) argsort/pointer rewrite | `_libs/groupby.pyx` |
 | 74 | `9686250639` | PERF: add early-day fast path and contiguous 1-D direct loop in shift_months(day_opt=None) | tslibs | B5-tslibs | migrated in offsets shift batch | `_libs/tslibs/offsets.pyx`, tests |
 | 75 | `15dba60291` | PERF: dense get_dummies helper | reshape | B4-reshape | migrated in dense get_dummies batch | `_libs/reshape.pyi`, `_libs/reshape.pyx`, `core/reshape/encoding.py`, tests |
 | 76 | `8232deb8a0` | PERF: split numeric unstack mask/value writes | reshape | B4-reshape | not directly migrated: pandas3 unstack no longer passes `new_mask` | `_libs/reshape.pyx` |

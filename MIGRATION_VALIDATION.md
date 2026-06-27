@@ -89,10 +89,11 @@ Status: implemented as a narrow sub-batch.
 - `df0c75b9fd` / reconstructed `0b060de`: duplicate export of the same
   `BaseMultiIndexCodesEngine` optimization.
 - `53b373262d` / reconstructed `29f4090`: typed Cython binary-search hooks from
-  `index_class_helper.pxi.in`; migrated for non-complex unmasked engines.
-- `403df2a143` / reconstructed `928c75c`: only the `groupsort_indexer` count and
-  output loop unroll was migrated in this sub-batch. The join take helper part is
-  still pending because it changes join control flow and needs targeted tests.
+  `index_class_helper.pxi.in`, including the `DatetimeEngine` call site.
+- `403df2a143` / reconstructed `928c75c`: the `groupsort_indexer` count and
+  output loop unroll is migrated. Its post-hoc join take helper has no remaining
+  pandas3 call site because the later `07ccc6e28e` implementation writes
+  `sort=False` join output directly in original-left order.
 
 ### pandas3 adaptation notes
 
@@ -101,9 +102,14 @@ Status: implemented as a narrow sub-batch.
   semantics. Therefore reconstructed `b14a455` was not mechanically copied.
 - Added `_searchsorted_right` beside `_searchsorted_left` and routed duplicate
   monotonic lookup through these hooks.
+- Routed the over-size monotonic `DatetimeEngine.get_loc` path through the
+  generated `Int64Engine._searchsorted_left` implementation.
 - Added numeric Cython type imports required by generated typed search methods.
-- Left the larger many-to-many `sort=False` join rewrite and object join indexer
-  specializations pending.
+- `02d2113331` is a source-side revert of the preceding take optimization; its
+  Python-list `level_has_nans` fallback is superseded by the later
+  `BaseMultiIndexCodesEngine` commits and is intentionally not reintroduced.
+- The many-to-many `sort=False` and object join indexer specializations were
+  completed in later target sub-batches.
 
 ### Checks executed
 
@@ -128,7 +134,8 @@ Status: implemented as a narrow sub-batch.
   - `python -m pytest pandas/tests/indexes/multi`
   - `python -m pytest pandas/tests/indexes/test_engines.py`
   - `python -m pytest pandas/tests/reshape/merge`
-- Run ASV for `groupsort_indexer` consumers and MultiIndex engine construction.
+- Run ASV for `groupsort_indexer` consumers, monotonic DatetimeIndex `get_loc`,
+  and MultiIndex engine construction.
 
 ## Batch 2b: RangeIndex concat helper
 
